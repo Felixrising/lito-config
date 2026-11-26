@@ -599,6 +599,33 @@ async function removeLimitChannels(lines) {
   lines.push(`Removed ${ours.length} test channel(s). The radio now has ${after.length} custom channels.`);
   return after;
 }
+// ---------- listen-only (TX frequency 0) test ----------
+$('#btnTxOffTest').onclick = () => busy('Listen-only test…', async () => {
+  const before = await state.client.readAllChannels();
+  const slot = before.length;
+  const already = before.filter((c) => c.chTxFreq === 0).map((c) => `C${String(c.chNo + 1).padStart(2, '0')}`);
+  if (slot >= 60) {
+    $('#txOffResult').textContent = `The radio is full (60 channels), so no test channel was added: a 61st makes it reboot.${already.length ? ` These slots are already listen-only, so test PTT on one of them: ${already.join(', ')}.` : ' Delete a channel first, or load a preset with listen-only repeater slots.'}`;
+    return;
+  }
+  if (!confirm(`Write a test channel "TXOFF" (receive 476.625 MHz, transmit frequency 0) into slot C${String(slot + 1).padStart(2, '0')}?`)) return;
+  const lines = [];
+  try {
+    const r = await state.client.insertChannel({ chNo: slot, chType: SEAL_CHTYPE.SEAL_USERDEF, chName: nameToBytes('TXOFF'), chRxFreq: 476625000, chTxFreq: 0, chRxCss: 0, chTxCss: 0 });
+    lines.push(`Insert: accepted (result ${r.result ?? 0}).`);
+  } catch (e) { lines.push(`Insert: REFUSED by the radio (${e.message}).`); $('#txOffResult').textContent = lines.join('\n'); return; }
+  const back = await state.client.readChannel(slot).catch((e) => ({ error: e.message }));
+  if (back.ch) lines.push(`Read back slot C${String(slot + 1).padStart(2, '0')}: name "${bytesToName(back.ch.chName)}", RX ${hzToMHz(back.ch.chRxFreq)}, TX ${back.ch.chTxFreq == null ? 'missing' : back.ch.chTxFreq === 0 ? '0 (stored as no transmit)' : hzToMHz(back.ch.chTxFreq) + ' MHz'}.`);
+  else lines.push(`Read back failed: ${back.error ?? 'no channel'}.`);
+  lines.push(`Now select C${String(slot + 1).padStart(2, '0')} on the radio, press PTT for a second and note what happens. Then press Delete test channel, and send the log.`);
+  $('#txOffResult').textContent = lines.join('\n');
+});
+$('#btnTxOffDelete').onclick = () => busy('Deleting TXOFF…', async () => {
+  const all = await state.client.readAllChannels();
+  const ours = all.filter((c) => bytesToName(c.chName) === 'TXOFF').map((c) => c.chNo).sort((a, b) => b - a);
+  for (const n of ours) await state.client.deleteChannel({ chNo: n, chType: SEAL_CHTYPE.SEAL_USERDEF });
+  $('#txOffResult').textContent = ours.length ? `Deleted ${ours.length} TXOFF channel(s).` : 'No TXOFF channel found.';
+});
 $('#btnLimitClean').onclick = () => busy('Removing test channels…', async () => {
   const lines = []; await removeLimitChannels(lines); $('#limitResult').textContent = lines.join('\n');
 });

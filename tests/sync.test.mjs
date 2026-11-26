@@ -91,3 +91,10 @@ test('onRadioRead receives the radio channels before any write', async () => {
   await applyConfig(c, config, { settings: false, onRadioRead: (r) => { seen = r.map((x) => x.chName); } });
   assert.deepEqual(seen, ['CAMP']);
 });
+
+test('the client refuses to insert a 61st custom channel (the radio reboots instead of refusing)', async () => {
+  const sim = new SimulatedRadio({ latencyMs: 1 });
+  const c = new LitoClient(sim.transport(), { timeoutMs: 1000 });
+  await c.open(); await c.handshake();
+  await assert.rejects(c.insertChannel({ chNo: 60, chType: 2, chName: 'X', chRxFreq: 476425000, chTxFreq: 476425000 }), /60-channel limit/);
+});
