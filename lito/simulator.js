@@ -15,7 +15,7 @@ function auCbChannels() {
     const repeater = (n >= 1 && n <= 8) || (n >= 41 && n <= 48);
     chans.push({
       chNo: n, chType: SEAL_CHTYPE.SEAL_PUBLIC, chTxPower: 1, chRxFreq: rx, chTxFreq: repeater ? rx + 750000 : rx,
-      chName: nameToBytes(`CB${n}`), chSq: 3, chVox: 0, chRxCss: 0, chTxCss: 0,
+      chName: nameToBytes(`CB${n}`), chSq: 1, chVox: 0, chRxCss: 0, chTxCss: 0,
       chElim: SEAL_SWITCH.SEAL_OFF, chBand: 0, chPolite: SEAL_SWITCH.SEAL_OFF, chPowerLevel: 2,
     });
   }
@@ -31,7 +31,7 @@ export class SimulatedRadio {
     // Channel numbers are per type on the real radio (user channels start at 0), so key by type + number.
     this.channels = new Map(auCbChannels().map((c) => [key(c.chType, c.chNo), c]));
     this.channels.set(key(SEAL_CHTYPE.SEAL_USERDEF, 0), { chNo: 0, chType: SEAL_CHTYPE.SEAL_USERDEF, chTxPower: 1, chRxFreq: 476925000, chTxFreq: 476925000,
-      chName: nameToBytes('CAMP'), chSq: 3, chVox: 0, chRxCss: 256 + 12, chTxCss: 256 + 12, chElim: SEAL_SWITCH.SEAL_OFF, chBand: 0, chPolite: SEAL_SWITCH.SEAL_OFF, chPowerLevel: 2 });
+      chName: nameToBytes('CAMP'), chSq: 1, chVox: 0, chRxCss: 256 + 12, chTxCss: 256 + 12, chElim: SEAL_SWITCH.SEAL_OFF, chBand: 0, chPolite: SEAL_SWITCH.SEAL_OFF, chPowerLevel: 2 });
     this.params = {
       verHw: 0x0100, verSoft: 0x010203, deviceName: nameToBytes('LITO Sim'), bleName: nameToBytes('LITO-SIM'),
       charge: 78, activate: 1, shareLoc: SEAL_SWITCH.SEAL_OFF, btAudio: 0, voiceAlert: SEAL_SWITCH.SEAL_ON,

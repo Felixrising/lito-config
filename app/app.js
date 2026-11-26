@@ -342,7 +342,7 @@ const STATUS_TEXT = { same: '', insert: 'new', modify: 'changed', delete: 'will 
 function renderRowStatus(row) {
   const st = state.haveSnapshot ? rowStatus(state.snapshot, row) : (row.deleted ? 'drop' : 'insert');
   row.tr.className = `st-${st}`;
-  row.tr.querySelector('.status').textContent = state.haveSnapshot ? STATUS_TEXT[st] : (row.deleted ? 'removed' : 'from file');
+  row.tr.querySelector('.status').textContent = state.haveSnapshot ? STATUS_TEXT[st] : (row.deleted ? 'removed' : 'new');
   renderSummary();
 }
 
@@ -644,27 +644,67 @@ $('#btnSlotDelete').onclick = () => busy('Deleting test…', async () => {
   slotReport(lines);
 });
 
-// ---------- country presets ----------
-for (const p of PRESETS) {
-  const o = document.createElement('option'); o.value = p.id;
-  o.textContent = `${p.country}: ${p.name}${p.verified ? '' : ' (unverified)'}`; $('#presetSel').appendChild(o);
+// ---------- presets dialog ----------
+let presetId = null;
+const presetOpts = () => ({ duplexRepeaters: $('#presetDuplex').checked, includeRepeaterInputs: $('#presetInputs').checked });
+const REGION_COUNTRY = { au: 'Australia', nz: 'New Zealand', us: 'United States', eu: 'EU / UK', sg: 'EU / UK' };
+function renderPresetList() {
+  const list = $('#presetList'); list.innerHTML = '';
+  const countries = [...new Set(PRESETS.map((p) => p.country))];
+  for (const c of countries) {
+    const h = document.createElement('div'); h.className = 'preset-group'; h.textContent = c; list.appendChild(h);
+    for (const p of PRESETS.filter((x) => x.country === c)) {
+      const it = document.createElement('button'); it.className = 'preset-item'; it.setAttribute('role', 'option');
+      it.classList.toggle('sel', p.id === presetId); it.setAttribute('aria-selected', String(p.id === presetId));
+      it.innerHTML = '<span class="pi-name"></span><span class="pi-meta"></span>';
+      it.querySelector('.pi-name').textContent = p.name;
+      it.querySelector('.pi-meta').textContent = `${buildPreset(p.id).length} channels${p.verified ? '' : ' · unverified'}`;
+      it.onclick = () => { presetId = p.id; renderPresetList(); showPresetDetail(); };
+      list.appendChild(it);
+    }
+  }
 }
-function showPresetNotes() {
-  const p = PRESETS.find((x) => x.id === $('#presetSel').value);
-  $('#presetNotes').textContent = `${p.notes} Source: ${p.source}.`;
+function showPresetDetail() {
+  const p = PRESETS.find((x) => x.id === presetId);
+  $('#presetTitle').textContent = `${p.country}: ${p.name}`;
+  $('#presetNotes').textContent = p.notes;
+  $('#presetSource').textContent = `Source: ${p.source}`;
+  const badges = $('#presetBadges'); badges.innerHTML = '';
+  const badge = (t, cls, tip) => { const b = document.createElement('span'); b.className = `badge ${cls}`; b.textContent = t; if (tip) b.title = tip; badges.appendChild(b); };
+  if (p.slotIsChannel) badge('slot = channel', 'info', 'Each channel goes in its own numbered slot: C01 holds CH1, C10 holds CH10, and so on');
+  badge(p.verified ? 'verified' : 'unverified', p.verified ? 'ok' : 'warn', p.verified ? 'Frequencies checked against the official band plan' : 'Not checked against the official rules yet');
   $('#presetDuplex').closest('label').classList.toggle('hidden', !('duplexRepeaters' in (p.options || {})));
   $('#presetInputs').closest('label').classList.toggle('hidden', !('includeRepeaterInputs' in (p.options || {})));
+  const chans = buildPreset(p.id, presetOpts());
+  $('#presetCount').textContent = `${chans.length} channels`;
+  const pv = $('#presetPreview'); pv.innerHTML = '';
+  for (const c of chans) {
+    const chip = document.createElement('span'); chip.className = 'chip';
+    chip.textContent = c.chName; chip.title = `${hzToMHz(c.chRxFreq)} MHz${c.chTxFreq !== c.chRxFreq ? `, TX ${hzToMHz(c.chTxFreq)}` : ''}${c.chRxCss ? `, tone ${toneLabel(c.chRxCss)}` : ''}`;
+    pv.appendChild(chip);
+  }
+  const ap = $('#btnPresetAppend');
+  ap.disabled = !!p.slotIsChannel;
+  ap.title = p.slotIsChannel ? 'This preset puts each channel in its own numbered slot, so it can only overwrite your channels' : 'Keep your current channels and add these after them';
 }
-$('#presetSel').onchange = showPresetNotes; showPresetNotes();
-$('#btnPreset').onclick = () => $('#presetPanel').classList.toggle('hidden');
-$('#btnPresetClose').onclick = () => $('#presetPanel').classList.add('hidden');
+$('#presetDuplex').onchange = showPresetDetail; $('#presetInputs').onchange = showPresetDetail;
+function openPresets() {
+  if (!presetId) { const c = REGION_COUNTRY[$('#bandPlan').value]; presetId = (PRESETS.find((p) => p.country === c) || PRESETS[0]).id; }
+  renderPresetList(); showPresetDetail();
+  $('#presetDialog').showModal();
+  $('#presetList .preset-item.sel')?.focus();
+}
+const closePresets = () => $('#presetDialog').close();
+$('#btnPreset').onclick = openPresets;
+$('#btnPresetClose').onclick = closePresets; $('#btnPresetCancel').onclick = closePresets;
+$('#presetDialog').addEventListener('click', (e) => { if (e.target === $('#presetDialog')) closePresets(); }); // click on the backdrop
 function applyPreset(replace) {
   const live = state.rows.filter((r) => !r.deleted && r.ch.chType !== SEAL_CHTYPE.SEAL_PUBLIC);
   const template = live[0]?.ch || {};
-  const preset = PRESETS.find((x) => x.id === $('#presetSel').value);
-  if (preset.slotIsChannel && !replace) { banner('This preset puts each channel in its own numbered slot, so it can only replace your channels, not be added after them.'); return; }
+  const preset = PRESETS.find((x) => x.id === presetId);
+  if (preset.slotIsChannel && !replace) return;
   const start = replace ? 0 : Math.max(-1, ...live.map((r) => r.ch.chNo)) + 1;
-  const chans = buildPreset($('#presetSel').value, { duplexRepeaters: $('#presetDuplex').checked, includeRepeaterInputs: $('#presetInputs').checked }, template, start);
+  const chans = buildPreset(presetId, presetOpts(), template, start);
   if (replace) {
     for (const r of state.rows) if (r.ch.chType !== SEAL_CHTYPE.SEAL_PUBLIC) r.deleted = true;
     const byNo = new Map(state.rows.map((r) => [r.ch.chNo, r]));
@@ -673,9 +713,9 @@ function applyPreset(replace) {
   state.rows = state.rows.filter((r) => !(r.deleted && !state.snapshot.has(r.ch.chNo)));
   state.rows.sort((a, b) => a.ch.chNo - b.ch.chNo);
   renderTable();
-  $('#presetPanel').classList.add('hidden');
-  state.setupSource = `preset "${PRESETS.find((x) => x.id === $('#presetSel').value).name}"`; renderFleet();
-  banner(`Loaded ${chans.length} preset channels into the editor. Review, save a file if you like, then Write changes (or use the Bulk Programmer).`, 'ok');
+  closePresets();
+  state.setupSource = `preset "${preset.name}"`; renderFleet();
+  banner(`${replace ? 'Overwrote the channel list with' : 'Appended'} ${chans.length} channels from "${preset.name}". Review them, then press Write to radio (or Write Radios in the Bulk Programmer).`, 'ok');
 }
 $('#btnPresetReplace').onclick = () => applyPreset(true);
 $('#btnPresetAppend').onclick = () => applyPreset(false);
@@ -756,7 +796,7 @@ function renderFleetSetup() {
   const names = live.slice(0, 6).map((r) => r.ch.chName || hzToMHz(r.ch.chRxFreq)).join(', ');
   el.textContent = `${live.length} channel(s)${state.setupSource ? ' from ' + state.setupSource : ''}: ${names}${live.length > 6 ? ', …' : ''}`;
 }
-$('#btnFleetPreset').onclick = () => { $('#presetPanel').classList.remove('hidden'); $('#presetPanel').scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+$('#btnFleetPreset').onclick = openPresets;
 $('#btnFleetOpen').onclick = () => $('#btnOpen').click();
 $('#btnFleetFromEditor').onclick = () => document.querySelector('.tabs [data-tab=channels]').click();
 
