@@ -22,7 +22,7 @@ The radio holds 60 custom channels according to the official app. The channel li
 1. Open the link above in Chrome or Edge. Firefox and Safari don't support Web Bluetooth.
 2. Close the official app on your phone first: the radio accepts one Bluetooth connection at a time.
 3. Press **Connect radio**, pick your LITO, and accept on the radio the first time.
-4. Press **Read from radio**, then **Save file…** to keep a backup before you change anything.
+4. Press **Read from radio**, then **Backup…** to save a backup before you change anything.
 
 To run it locally, serve the folder over `http://localhost` (for example `npx serve` or `python -m http.server`). On Windows, `start.cmd` does this with PowerShell only. Opening `index.html` straight from disk won't work, because Web Bluetooth needs https or localhost.
 

@@ -5,7 +5,8 @@ import { SEAL_SWITCH, SEAL_CHTYPE, SEAL_VOICETYPE, CMD_MESSAGE, cmdName } from '
 import { codec } from '../lito/client.js';
 import { DEFAULT_ASSUMPTIONS, hzToMHz, mhzToHz, cssDecode, cssParse, cssOptions, bytesToName, nameToBytes } from '../lito/values.js';
 import { toHex, fromHex } from '../lito/frame.js';
-import { PRESETS, buildPreset, BAND_PLANS } from '../lito/presets.js';
+import { PRESETS, buildPreset } from '../lito/presets.js';
+import { BAND_PLANS, expandRanges, planForCountry } from '../lito/bands.js';
 import { applyConfig, summarize, CLONEABLE_SETTINGS } from '../lito/sync.js';
 import {
   toEditor, diffChannels, rowStatus, validate, buildConfigFile, parseConfigFile, compactUserChannels,
@@ -199,6 +200,8 @@ function renderDevice() {
 async function readDevice() {
   state.device = await state.client.getDeviceParams();
   try { state.country = (await state.client.getCountry()).country; } catch (e) { state.country = `not read (${e.message})`; }
+  const plan = typeof state.country === 'number' && planForCountry(state.country);
+  if (plan && plan.id !== $('#bandPlan').value) setPlan(plan.id);
   renderDevice();
 }
 function deviceChanges() {
@@ -261,42 +264,40 @@ function toneCell(row, field, disabled) {
 const PLAN_KEY = 'lito.bandplan';
 for (const p of BAND_PLANS) { const o = document.createElement('option'); o.value = p.id; o.textContent = p.label; $('#bandPlan').appendChild(o); }
 $('#bandPlan').value = localStorage.getItem(PLAN_KEY) || 'au';
-$('#bandPlan').onchange = () => { localStorage.setItem(PLAN_KEY, $('#bandPlan').value); freqTemplate = null; renderTable(); };
+function setPlan(id) { $('#bandPlan').value = id; localStorage.setItem(PLAN_KEY, id); for (const k in freqTemplates) delete freqTemplates[k]; renderTable(); }
+$('#bandPlan').onchange = () => setPlan($('#bandPlan').value);
 const currentPlan = () => BAND_PLANS.find((p) => p.id === $('#bandPlan').value) || BAND_PLANS[0];
-let freqTemplate = null;
+const freqTemplates = {};
 function freqCell(row, field, disabled) {
   const plan = currentPlan();
-  if (!freqTemplate) {
-    freqTemplate = document.createElement('select'); freqTemplate.className = 'w-freq';
-    for (const f of plan.freqs) { const o = document.createElement('option'); o.value = String(f.hz); o.textContent = `${hzToMHz(f.hz)}  ${f.label}`; freqTemplate.appendChild(o); }
-    const other = document.createElement('option'); other.value = 'other'; other.textContent = 'Other…'; freqTemplate.appendChild(other);
+  const dir = field === 'chTxFreq' ? 'tx' : 'rx';
+  if (!freqTemplates[dir]) {
+    const t = document.createElement('select'); t.className = `w-freq ${dir}-freq`;
+    for (const hz of expandRanges(plan[dir])) { const o = document.createElement('option'); o.value = String(hz); o.textContent = `${hzToMHz(hz)}  ${plan.name(hz)}`; t.appendChild(o); }
+    freqTemplates[dir] = t;
   }
-  const sel = freqTemplate.cloneNode(true); sel.disabled = disabled;
+  const sel = freqTemplates[dir].cloneNode(true); sel.disabled = disabled;
   const show = () => {
     const v = row.ch[field];
     if (v != null && ![...sel.options].some((o) => o.value === String(v))) {
+      // Keep whatever the radio or file has, but flag it: the official app wouldn't allow it.
       const o = document.createElement('option'); o.value = String(v);
-      o.textContent = `${hzToMHz(v)}  ${v < plan.min || v > plan.max ? '(outside plan)' : '(custom)'}`;
-      sel.insertBefore(o, sel.lastChild);
+      o.textContent = `${hzToMHz(v)}  ${plan.name(v)} (not allowed)`.replace('  (', ' (');
+      sel.insertBefore(o, sel.firstChild);
     }
     sel.value = v == null ? '' : String(v);
+    sel.title = sel.selectedOptions[0]?.textContent.includes('not allowed') ? `The official app doesn't allow this ${dir.toUpperCase()} frequency for ${plan.label}` : '';
   };
   show();
   sel.onchange = () => {
-    let hz;
-    if (sel.value === 'other') {
-      const s = prompt(`Frequency in MHz (${hzToMHz(plan.min + 6250)} to ${hzToMHz(plan.max - 6250)}):`, hzToMHz(row.ch[field]));
-      hz = s == null ? null : mhzToHz(s);
-      if (hz != null && (hz < plan.min || hz > plan.max)) { banner(`${s} MHz is outside the ${plan.label} band (${hzToMHz(plan.min + 6250)} to ${hzToMHz(plan.max - 6250)} MHz).`, 'error'); hz = null; }
-      if (hz == null) { show(); return; }
-    } else hz = Number(sel.value);
-    const old = row.ch[field];
+    const hz = Number(sel.value), old = row.ch[field];
     row.ch[field] = hz;
-    // Simplex channel: changing RX moves TX with it.
-    if (field === 'chRxFreq' && row.ch.chTxFreq === old) { row.ch.chTxFreq = hz; const t = row.tr.querySelector('select.tx-freq'); if (t) { t.replaceWith(freqCell(row, 'chTxFreq', disabled).firstChild); } }
+    // Simplex channel: changing RX moves TX with it, if TX may use that frequency.
+    if (field === 'chRxFreq' && row.ch.chTxFreq === old && expandRanges(plan.tx).includes(hz)) {
+      row.ch.chTxFreq = hz; const t = row.tr.querySelector('select.tx-freq'); if (t) t.replaceWith(freqCell(row, 'chTxFreq', disabled).firstChild);
+    }
     show(); renderRowStatus(row);
   };
-  if (field === 'chTxFreq') sel.classList.add('tx-freq');
   const td = document.createElement('td'); td.appendChild(sel); return td;
 }
 const SQ_OPTS = [['1', 'Normal'], ['2', 'Sensitive']];
@@ -380,7 +381,7 @@ function renderTable() {
 function renderSummary() {
   renderFleetSetup?.();
   const live = state.rows.filter((r) => !r.deleted);
-  if (!state.rows.length) { $('#chSummary').innerHTML = 'No channels loaded. Connect and press <b>Read from radio</b>, or open a saved file.'; return; }
+  if (!state.rows.length) { $('#chSummary').innerHTML = 'No channels loaded. Connect and press <b>Read from radio</b>, or press <b>Restore…</b> to load a backup.'; return; }
   const user = live.filter((r) => r.ch.chType !== SEAL_CHTYPE.SEAL_PUBLIC).length;
   const max = state.asm.maxUserChannels ?? 60;
   let s = `${user} of ${max} custom channels used.${user > max ? ` Too many: the radio holds ${max}.` : ''}`;
@@ -429,7 +430,7 @@ $('#btnWriteCh').onclick = () => busy('Writing channels…', async () => {
   const d = diffChannels(state.snapshot, state.rows);
   const total = d.inserts.length + d.modifies.length + d.deletes.length;
   if (!total) { banner('Nothing to write: the radio already matches.'); return; }
-  if (!confirm(`Write to the radio?\n\n${d.inserts.length} new, ${d.modifies.length} changed, ${d.deletes.length} deleted.\n\nTip: save a backup file first.`)) return;
+  if (!confirm(`Write to the radio?\n\n${d.inserts.length} new, ${d.modifies.length} changed, ${d.deletes.length} deleted.\n\nTip: press Backup… first.`)) return;
   const fails = []; let done = 0;
   const step = async (label, ch, fn) => {
     setStatus(`Writing ${++done}/${total}…`, 'busy');
@@ -607,7 +608,7 @@ async function removeLimitChannels(lines) {
 $('#btnLimitTest').onclick = () => busy('Channel limit test…', async () => {
   const lines = [];
   const before = await state.client.readAllChannels();
-  if (!confirm(`Channel limit test\n\nThe radio has ${before.length} custom channels. This adds test channels named LIM${before.length + 1}, LIM${before.length + 2}, … (476.925 MHz) one at a time until the radio refuses, then deletes only those test channels. Your channels are not changed.\n\nSave a backup first (Channels tab > Save file). Continue?`)) return;
+  if (!confirm(`Channel limit test\n\nThe radio has ${before.length} custom channels. This adds test channels named LIM${before.length + 1}, LIM${before.length + 2}, … (476.925 MHz) one at a time until the radio refuses, then deletes only those test channels. Your channels are not changed.\n\nSave a backup first (Channels tab > Backup…). Continue?`)) return;
   lines.push(`Before: ${before.length} custom channels.`);
   let ok = before.length, why = 'stopped at the safety limit (128)';
   try {
@@ -758,7 +759,7 @@ function renderFleet() {
 function renderFleetSetup() {
   const el = $('#fleetSetup'); if (!el) return;
   const live = state.rows.filter((r) => !r.deleted && r.ch.chType !== SEAL_CHTYPE.SEAL_PUBLIC).sort((a, b) => a.ch.chNo - b.ch.chNo);
-  if (!live.length) { el.textContent = 'No setup loaded yet. Load a preset or a saved file, or open a radio\'s channels below and use "Open in Channels tab".'; return; }
+  if (!live.length) { el.textContent = 'No setup loaded yet. Load a preset or a backup, or open a radio\'s channels below and use "Open in Channels tab".'; return; }
   const names = live.slice(0, 6).map((r) => r.ch.chName || hzToMHz(r.ch.chRxFreq)).join(', ');
   el.textContent = `${live.length} channel(s)${state.setupSource ? ' from ' + state.setupSource : ''}: ${names}${live.length > 6 ? ', …' : ''}`;
 }

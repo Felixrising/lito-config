@@ -55,16 +55,16 @@
       <button id="btnRevert">Undo all edits</button>
       <button id="btnPreset">Presets…</button>
       <span class="sep"></span>
-      <button id="btnSave">Save file…</button>
-      <button id="btnOpen">Open file…</button>
+      <button id="btnSave" title="Save the channels and settings to a .lito.json file">Backup…</button>
+      <button id="btnOpen" title="Load a .lito.json backup or a CSV into the editor. Nothing is sent until you write.">Restore…</button>
       <button id="btnCsv">Export CSV</button>
       <input type="file" id="fileInput" accept=".json,.lito.json,.csv" hidden>
       <span class="sep"></span>
-      <label class="small" title="Which frequencies the RX/TX MHz lists offer">Band plan <select id="bandPlan"></select></label>
+      <label class="small" title="Which frequencies the RX/TX MHz lists offer: the same limits as the official app for this region. Set automatically from the radio's region when you connect.">Region <select id="bandPlan"></select></label>
       <label class="small" title="Squelch, VOX, band, busy lockout and TX power for each channel"><input type="checkbox" id="showAdv"> show more channel settings</label>
     </div>
-    <p class="note">Hover a column heading for an explanation. <b>Pending</b> shows what Write changes will do to each row. Frequencies and tones are picked from lists (Other… lets you type a frequency inside the band plan). Orange headings with ? are still raw numbers, kept exactly as the radio stores them.</p>
-    <div id="chSummary" class="summary">No channels loaded. Connect and press <b>Read from radio</b>, or open a saved file.</div>
+    <p class="note">Hover a column heading for an explanation. <b>Pending</b> shows what Write changes will do to each row. Frequencies and tones are picked from lists (the same frequencies the official app allows for the region). Orange headings with ? are still raw numbers, kept exactly as the radio stores them.</p>
+    <div id="chSummary" class="summary">No channels loaded. Connect and press <b>Read from radio</b>, or press <b>Restore…</b> to load a backup.</div>
     <div class="tablewrap">
       <table id="chTable" class="hide-adv">
         <thead><tr>
@@ -127,7 +127,7 @@
       <div id="fleetSetup" class="summary"></div>
       <div class="toolbar">
         <button id="btnFleetPreset">Presets…</button>
-        <button id="btnFleetOpen">Open file…</button>
+        <button id="btnFleetOpen" title="Use a .lito.json backup or CSV as the setup to write">Load backup…</button>
         <button id="btnFleetFromEditor" title="The Channels tab holds the setup; edit it there">Edit in Channels tab</button>
       </div>
       <div class="toolbar writebar">
