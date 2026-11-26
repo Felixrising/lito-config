@@ -154,11 +154,11 @@ $('#themeSel').onchange = (e) => {
   if (t !== 'console' && ambience.isPlaying()) toggleAmbience(false, false);
   else if (t === 'console' && ambOn()) toggleAmbience(true, false); // picking the theme is a click, so audio may start
 };
-// ship's ambience (console theme only). On by default at 80%; browsers block sound until the first click or key,
+// ship's ambience (console theme only). On by default at 25%; browsers block sound until the first click or key,
 // so it is armed and starts on the first interaction. The button mutes it and remembers that.
 const AMB_KEY = 'lito.amb';
 const ambOn = () => { try { return localStorage.getItem(AMB_KEY) !== 'off'; } catch { return true; } };
-try { $('#ambVol').value = localStorage.getItem('lito.ambVol') ?? '0.8'; } catch { /* ignore */ }
+try { $('#ambVol').value = localStorage.getItem('lito.ambVolume') ?? '0.25'; } catch { /* ignore */ }
 async function toggleAmbience(on, remember = true) {
   const b = $('#btnAmbience');
   if (remember) try { localStorage.setItem(AMB_KEY, on ? 'on' : 'off'); } catch { /* ignore */ }
@@ -173,7 +173,7 @@ const armAmbience = (e) => {
   if (document.documentElement.dataset.theme === 'console' && ambOn() && !ambience.isPlaying()) toggleAmbience(true, false);
 };
 for (const ev of ['pointerdown', 'keydown']) document.addEventListener(ev, armAmbience, { capture: true });
-$('#ambVol').oninput = (e) => { if (!ambience.isPlaying() && ambOn()) toggleAmbience(true, false); ambience.setVolume(Number(e.target.value)); try { localStorage.setItem('lito.ambVol', e.target.value); } catch { /* ignore */ } };
+$('#ambVol').oninput = (e) => { if (!ambience.isPlaying() && ambOn()) toggleAmbience(true, false); ambience.setVolume(Number(e.target.value)); try { localStorage.setItem('lito.ambVolume', e.target.value); } catch { /* ignore */ } };
 
 // ---------- connect ----------
 async function connectWith(transport, name) {
