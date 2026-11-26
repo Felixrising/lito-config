@@ -189,3 +189,32 @@ export function buildPreset(id, options = {}, template = {}, startNo = 0) {
     chRxFreq: Math.round(c.rx), chTxFreq: Math.round(c.tx), chRxCss: c.rxCss ?? 0, chTxCss: c.txCss ?? 0, ...copy,
   }));
 }
+
+/**
+ * Frequency lists for the channel editor's RX/TX dropdowns.
+ * Each plan: { id, label, freqs: [{hz, label}] sorted by frequency, min, max } (min/max in Hz bound manual entry).
+ */
+function planFrom(id, label, entries) {
+  const m = new Map();
+  for (const [hz, l] of entries) { const k = Math.round(hz); if (!m.has(k)) m.set(k, l); }
+  const freqs = [...m].map(([hz, l]) => ({ hz, label: l })).sort((a, b) => a.hz - b.hz);
+  return { id, label, freqs, min: freqs[0].hz - 6250, max: freqs[freqs.length - 1].hz + 6250 };
+}
+const cbEntries = () => Array.from({ length: 80 }, (_, i) => {
+  const n = i + 1;
+  return [auFreq(n), n === 22 || n === 23 ? `CH${n} data only` : n >= 61 && n <= 63 ? `CH${n} reserved` : `CH${n}`];
+});
+function presetEntries(ids) {
+  const out = [];
+  for (const id of ids) {
+    const p = PRESETS.find((x) => x.id === id);
+    for (const c of p.build(p.options || {})) { out.push([c.rx, c.name]); if (c.tx !== c.rx) out.push([c.tx, `${c.name} in`]); }
+  }
+  return out;
+}
+export const BAND_PLANS = [
+  planFrom('au', 'Australia UHF CB', cbEntries()),
+  planFrom('nz', 'New Zealand UHF CB', cbEntries()),
+  planFrom('us', 'US FRS / GMRS', presetEntries(['us-gmrs'])),
+  planFrom('eu', 'EU / UK PMR446', presetEntries(['eu-pmr446'])),
+];

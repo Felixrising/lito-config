@@ -5,7 +5,7 @@ import { SEAL_SWITCH, SEAL_CHTYPE, SEAL_VOICETYPE, CMD_MESSAGE, cmdName } from '
 import { codec } from '../lito/client.js';
 import { DEFAULT_ASSUMPTIONS, hzToMHz, mhzToHz, cssDecode, cssParse, cssOptions, bytesToName, nameToBytes } from '../lito/values.js';
 import { toHex, fromHex } from '../lito/frame.js';
-import { PRESETS, buildPreset } from '../lito/presets.js';
+import { PRESETS, buildPreset, BAND_PLANS } from '../lito/presets.js';
 import { applyConfig, summarize, CLONEABLE_SETTINGS } from '../lito/sync.js';
 import {
   toEditor, diffChannels, rowStatus, validate, buildConfigFile, parseConfigFile, compactUserChannels,
@@ -257,6 +257,48 @@ function toneCell(row, field, disabled) {
   sel.onchange = () => { row.ch[field] = Number(sel.value); renderRowStatus(row); };
   const td = document.createElement('td'); td.appendChild(sel); return td;
 }
+// ---------- frequency dropdowns ----------
+const PLAN_KEY = 'lito.bandplan';
+for (const p of BAND_PLANS) { const o = document.createElement('option'); o.value = p.id; o.textContent = p.label; $('#bandPlan').appendChild(o); }
+$('#bandPlan').value = localStorage.getItem(PLAN_KEY) || 'au';
+$('#bandPlan').onchange = () => { localStorage.setItem(PLAN_KEY, $('#bandPlan').value); freqTemplate = null; renderTable(); };
+const currentPlan = () => BAND_PLANS.find((p) => p.id === $('#bandPlan').value) || BAND_PLANS[0];
+let freqTemplate = null;
+function freqCell(row, field, disabled) {
+  const plan = currentPlan();
+  if (!freqTemplate) {
+    freqTemplate = document.createElement('select'); freqTemplate.className = 'w-freq';
+    for (const f of plan.freqs) { const o = document.createElement('option'); o.value = String(f.hz); o.textContent = `${hzToMHz(f.hz)}  ${f.label}`; freqTemplate.appendChild(o); }
+    const other = document.createElement('option'); other.value = 'other'; other.textContent = 'Other…'; freqTemplate.appendChild(other);
+  }
+  const sel = freqTemplate.cloneNode(true); sel.disabled = disabled;
+  const show = () => {
+    const v = row.ch[field];
+    if (v != null && ![...sel.options].some((o) => o.value === String(v))) {
+      const o = document.createElement('option'); o.value = String(v);
+      o.textContent = `${hzToMHz(v)}  ${v < plan.min || v > plan.max ? '(outside plan)' : '(custom)'}`;
+      sel.insertBefore(o, sel.lastChild);
+    }
+    sel.value = v == null ? '' : String(v);
+  };
+  show();
+  sel.onchange = () => {
+    let hz;
+    if (sel.value === 'other') {
+      const s = prompt(`Frequency in MHz (${hzToMHz(plan.min + 6250)} to ${hzToMHz(plan.max - 6250)}):`, hzToMHz(row.ch[field]));
+      hz = s == null ? null : mhzToHz(s);
+      if (hz != null && (hz < plan.min || hz > plan.max)) { banner(`${s} MHz is outside the ${plan.label} band (${hzToMHz(plan.min + 6250)} to ${hzToMHz(plan.max - 6250)} MHz).`, 'error'); hz = null; }
+      if (hz == null) { show(); return; }
+    } else hz = Number(sel.value);
+    const old = row.ch[field];
+    row.ch[field] = hz;
+    // Simplex channel: changing RX moves TX with it.
+    if (field === 'chRxFreq' && row.ch.chTxFreq === old) { row.ch.chTxFreq = hz; const t = row.tr.querySelector('select.tx-freq'); if (t) { t.replaceWith(freqCell(row, 'chTxFreq', disabled).firstChild); } }
+    show(); renderRowStatus(row);
+  };
+  if (field === 'chTxFreq') sel.classList.add('tx-freq');
+  const td = document.createElement('td'); td.appendChild(sel); return td;
+}
 const SQ_OPTS = [['1', 'Normal'], ['2', 'Sensitive']];
 const VOX_OPTS = [['0', 'Off'], ['1', 'Low'], ['2', 'Middle'], ['3', 'High']];
 const BAND_OPTS = [['0', 'Wide'], ['1', 'Narrow']];
@@ -316,8 +358,8 @@ function renderTable() {
     tdNo.textContent = row.ch.chType === SEAL_CHTYPE.SEAL_PUBLIC ? `L${String(row.ch.chNo + 1).padStart(2, '0')}` : `C${String(row.ch.chNo + 1).padStart(2, '0')}`;
     tr.appendChild(tdNo);
     tr.appendChild(cellInput(row, 'chName', 'w-name', { get: (c) => c.chName ?? '', set: (s) => s, disabled: lk }));
-    tr.appendChild(cellInput(row, 'chRxFreq', 'w-freq', { get: (c) => hzToMHz(c.chRxFreq), set: (s) => mhzToHz(s), disabled: lk }));
-    tr.appendChild(cellInput(row, 'chTxFreq', 'w-freq', { get: (c) => hzToMHz(c.chTxFreq), set: (s) => mhzToHz(s), disabled: lk }));
+    tr.appendChild(freqCell(row, 'chRxFreq', lk));
+    tr.appendChild(freqCell(row, 'chTxFreq', lk));
     tr.appendChild(toneCell(row, 'chRxCss', lk));
     tr.appendChild(toneCell(row, 'chTxCss', lk));
     const adv = (td) => { td.classList.add('adv'); tr.appendChild(td); };

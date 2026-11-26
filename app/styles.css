@@ -143,3 +143,4 @@ td.rname { white-space: nowrap; }
 #fleetTable button.st-off { border-color: var(--muted); }
 td.acts button.twisty { margin-left: auto; border: 1px solid var(--line); padding: 2px 10px; }
 td.acts { width: 1%; }
+td select.w-freq { width: 12em; } td select.w-tone { width: 6.5em; }
