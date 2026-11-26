@@ -84,6 +84,12 @@ Choose **Theme → Kobayashi console** in the header for a retro sci-fi control 
 
 To run it locally, serve the folder over `http://localhost` (for example `npx serve` or `python -m http.server`). On Windows, `start.cmd` does this with PowerShell only. Opening `index.html` straight from disk won't work, because Web Bluetooth needs https or localhost.
 
+## Privacy
+
+The app runs entirely in your browser. Radio settings, backups and presets never leave your computer, apart from files you choose to save.
+
+The published site at felixrising.github.io counts page visits with [Cloudflare Web Analytics](https://www.cloudflare.com/web-analytics/). It sets no cookies, doesn't fingerprint your browser and collects no personal data, only anonymous page views, referrers, country and browser type. It doesn't run on a local copy (localhost), and content blockers that block it don't affect the app.
+
 ## Help finish the decoding
 
 A few values are still raw numbers: TX power, power level, power save and the "all public" flag. The **Protocol status** tab (developer tools) lists what's confirmed and what isn't. If you work one out, for example by changing it in the official app and reading it back here, open an issue or pull request with what you changed and the downloaded log.

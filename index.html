@@ -11,6 +11,16 @@
   try { const t = localStorage.getItem('lito.theme'), d = new Date();
     if (t) document.documentElement.dataset.theme = t; else if (d.getMonth() === 8 && d.getDate() === 8) document.documentElement.dataset.theme = 'console'; } catch {}
 </script>
+<script>
+  // Visit counts via Cloudflare Web Analytics: no cookies, no fingerprinting, no personal data.
+  // Only runs on the published github.io site, never on localhost or a local copy.
+  // Paste the site token from Cloudflare dashboard > Analytics & Logs > Web Analytics.
+  (function () { const token = 'CF_BEACON_TOKEN';
+    if (token === 'CF_BEACON_' + 'TOKEN' || !location.hostname.endsWith('github.io')) return;
+    const s = document.createElement('script'); s.defer = true;
+    s.src = 'https://static.cloudflareinsights.com/beacon.min.js';
+    s.setAttribute('data-cf-beacon', JSON.stringify({ token })); document.head.appendChild(s); })();
+</script>
 </head>
 <body>
 <header>
