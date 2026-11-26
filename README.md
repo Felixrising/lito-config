@@ -73,7 +73,7 @@ Then tick the radios and press **Write Radios**. Tick *back up each radio first*
 
 ![Starship console theme](docs/screenshots/starship-console.png)
 
-Choose **Theme → Starship console** in the header for a retro sci-fi control panel, with playful button names (hover any button for its plain name). It also has an optional **♪ Engines** ambience, a quiet hum made live in your browser, and it's off until you press it. The theme is the default every 8 September unless you've picked one.
+Choose **Theme → Starship console** in the header for a retro sci-fi control panel, with playful button names (hover any button for its plain name). It also plays an engine-room hum made live in your browser (no recordings). The hum is on by default at 80% and starts on your first click, because browsers don't allow sound before that. Press **♪ Engines online** to mute it; the app remembers. The theme is the default every 8 September unless you've picked one.
 
 ## Using it
 
