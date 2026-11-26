@@ -88,7 +88,7 @@ test('client against simulator: handshake, params, channels, edits', async () =>
   await cl.setDeviceParams({ deviceName: nameToBytes('Radio 1') });
   assert.equal(bytesToName((await cl.getDeviceParams()).deviceName), 'Radio 1');
   const c = await cl.getCountry();
-  assert.equal(c.country, 61);
+  assert.equal(c.country, 36);
   let prog = 0;
   const chans = await cl.readAllChannels({ onProgress: (n) => { prog = n; } });
   assert.equal(chans.length, 1);

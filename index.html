@@ -42,7 +42,7 @@
         <button id="btnPresetAppend">Add after the current channels</button>
         <button id="btnPresetClose">Close</button>
       </div>
-      <p class="note">Squelch, VOX, band, busy lockout and power are copied from your first existing channel. Nothing is sent to a radio until you write (Write changes on the Channels tab, or Write Radios in the Bulk Programmer).</p>
+      <p class="note">Channels get name, frequencies and tones; squelch, VOX and the rest are radio-wide settings. Nothing is sent to a radio until you write (Write changes on the Channels tab, or Write Radios in the Bulk Programmer).</p>
     </div>
   <!-- Channels -->
   <section id="tab-channels" class="tab active">
@@ -61,9 +61,8 @@
       <input type="file" id="fileInput" accept=".json,.lito.json,.csv" hidden>
       <span class="sep"></span>
       <label class="small" title="Which frequencies the RX/TX MHz lists offer: the same limits as the official app for this region. Set automatically from the radio's region when you connect.">Region <select id="bandPlan"></select></label>
-      <label class="small" title="Squelch, VOX, band, busy lockout and TX power for each channel"><input type="checkbox" id="showAdv"> show more channel settings</label>
     </div>
-    <p class="note">Hover a column heading for an explanation. <b>Pending</b> shows what Write changes will do to each row. Frequencies and tones are picked from lists (the same frequencies the official app allows for the region). Orange headings with ? are still raw numbers, kept exactly as the radio stores them.</p>
+    <p class="note">Hover a column heading for an explanation. <b>Pending</b> shows what Write changes will do to each row. Frequencies and tones are picked from lists (the same frequencies the official app allows for the region). Squelch, VOX, bandwidth and busy lockout are radio-wide: set them on the Radio settings tab.</p>
     <div id="chSummary" class="summary">No channels loaded. Connect and press <b>Read from radio</b>, or press <b>Restore…</b> to load a backup.</div>
     <div class="tablewrap">
       <table id="chTable" class="hide-adv">
@@ -71,12 +70,6 @@
           <th><input type="checkbox" id="selAll" title="select all"></th>
           <th title="The slot this channel shows as on the radio (C01, C02 …). The radio keeps them in order with no gaps.">Slot</th><th>Name</th><th>RX MHz</th><th>TX MHz</th>
           <th>RX tone</th><th>TX tone</th>
-          <th class="adv" title="Squelch: Normal or Sensitive">Squelch</th>
-          <th class="adv" title="Voice-activated transmit: Off, Low, Middle or High">VOX</th>
-          <th class="adv" title="Channel bandwidth: Wide or Narrow">Band</th>
-          <th class="adv" title="Busy lockout: blocks transmitting while the channel is busy">Busy lockout</th>
-          <th class="guess adv" title="Transmit power (chTxPower). Raw number: what the values mean isn't known yet.">TX power ?</th>
-          <th class="guess adv" title="Power level (chPowerLevel). Raw number: what the values mean isn't known yet.">Power lvl ?</th>
           <th title="What will happen to this channel when you press Write changes: new, changed, will delete, or blank if it already matches the radio.">Pending</th>
         </tr></thead>
         <tbody></tbody>
@@ -101,13 +94,13 @@
           <label>Voice alert <input type="checkbox" id="f_voiceAlert"></label>
           <label>Share location <input type="checkbox" id="f_shareLoc"></label>
           <label class="guess" title="pwsaveMode: values not confirmed yet">Power save mode (raw) ? <input id="f_pwsaveMode" type="number" min="0"></label>
-          <label title="Squelch for the channel the radio is on right now (chSq). The official app offers Normal and Sensitive.">Squelch (current channel)
+          <label title="Squelch for the whole radio. The official app offers Normal and Sensitive.">Squelch
             <select id="f_chSq"><option value="">(not read)</option><option value="1">Normal</option><option value="2">Sensitive</option></select></label>
-          <label title="Voice-activated transmit for the current channel (chVox).">VOX (current channel)
+          <label title="Voice-activated transmit for the whole radio.">VOX
             <select id="f_chVox"><option value="">(not read)</option><option value="0">Off</option><option value="1">Low</option><option value="2">Middle</option><option value="3">High</option></select></label>
-          <label title="Channel bandwidth for the current channel (chBand).">Band (current channel)
+          <label title="Channel bandwidth (wide or narrow FM) for the whole radio.">Bandwidth
             <select id="f_chBand"><option value="">(not read)</option><option value="0">Wide</option><option value="1">Narrow</option></select></label>
-          <label title="Busy channel lockout for the current channel (chPolite): stops you transmitting over someone already talking.">Busy lockout (current channel)
+          <label title="Busy channel lockout for the whole radio: stops you transmitting over someone already talking.">Busy lockout
             <select id="f_chPolite"><option value="">(not read)</option><option value="1">Off</option><option value="2">On</option></select></label>
         </div>
         <p class="note">Only the fields you change are sent to the radio.</p>
@@ -206,7 +199,7 @@
           <li>Connecting, and skipping the accept prompt after the first time</li>
           <li>Reading and writing custom channels (up to 60, packed list C01, C02 … with no gaps)</li>
           <li>Frequencies, names (GBK), RX/TX tones: CTCSS and DCS</li>
-          <li>Squelch, VOX, band and busy lockout (set for the current channel)</li>
+          <li>Squelch, VOX, bandwidth and busy lockout (radio-wide settings)</li>
           <li>Name limit: 18 characters (non-English characters count as 3)</li>
           <li>Device name, Bluetooth name, voice prompts, voice alert, share location, region</li>
         </ul>

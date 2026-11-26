@@ -213,7 +213,7 @@ function deviceChanges() {
   const va = $('#f_voiceAlert').checked ? SEAL_SWITCH.SEAL_ON : SEAL_SWITCH.SEAL_OFF; if (va !== (d.voiceAlert ?? SEAL_SWITCH.SEAL_OFF)) c.voiceAlert = va;
   const sl = $('#f_shareLoc').checked ? SEAL_SWITCH.SEAL_ON : SEAL_SWITCH.SEAL_OFF; if (sl !== (d.shareLoc ?? SEAL_SWITCH.SEAL_OFF)) c.shareLoc = sl;
   const pm = $('#f_pwsaveMode').value; if (pm !== '' && Number(pm) !== d.pwsaveMode) c.pwsaveMode = Number(pm);
-  // squelch / VOX / band live on the current channel and are sent inside DeviceParam.ch (as the app does)
+  // squelch / VOX / band / busy lockout are radio-wide and sent inside DeviceParam.ch (as the app does)
   const cc = (d.ch && typeof d.ch === 'object') ? d.ch : {};
   const want = { chSq: $('#f_chSq').value, chVox: $('#f_chVox').value, chBand: $('#f_chBand').value, chPolite: $('#f_chPolite').value };
   const chChanged = Object.entries(want).some(([k, v]) => v !== '' && Number(v) !== cc[k]);
@@ -227,7 +227,7 @@ $('#btnReadDev').onclick = () => busy('Reading…', async () => { await readDevi
 $('#btnWriteDev').onclick = () => busy('Writing…', async () => {
   const c = deviceChanges();
   if (!Object.keys(c).length) { banner('No settings changed.'); return; }
-  const list = Object.keys(c).map((k) => (k === 'ch' ? 'squelch/VOX/band/busy lockout of the current channel' : k)).join(', ');
+  const list = Object.keys(c).map((k) => (k === 'ch' ? 'squelch/VOX/bandwidth/busy lockout' : k)).join(', ');
   if (!confirm(`Send these settings to the radio?\n\n${list}`)) return;
   await state.client.setDeviceParams(c);
   await readDevice();
@@ -363,13 +363,7 @@ function renderTable() {
     tr.appendChild(freqCell(row, 'chTxFreq', lk));
     tr.appendChild(toneCell(row, 'chRxCss', lk));
     tr.appendChild(toneCell(row, 'chTxCss', lk));
-    const adv = (td) => { td.classList.add('adv'); tr.appendChild(td); };
-    adv(selectCell(row, 'chSq', SQ_OPTS, lk));
-    adv(selectCell(row, 'chVox', VOX_OPTS, lk));
-    adv(selectCell(row, 'chBand', BAND_OPTS, lk));
-    adv(switchCell(row, 'chPolite', lk));
-    // chElim is kept as read but not shown: the official app doesn't use it.
-    for (const f of ['chTxPower', 'chPowerLevel']) adv(cellInput(row, f, 'w-n', { get: (c) => c[f] ?? '', set: numSet, disabled: lk, type: 'number' }));
+    // Squelch/VOX/band/busy lockout are radio-wide (DeviceParam.ch); the radio doesn't report them per channel.
     const st = document.createElement('td'); st.className = 'status'; tr.appendChild(st);
     tb.appendChild(tr);
     renderRowStatus(row);
@@ -473,7 +467,6 @@ $('#btnRevert').onclick = () => {
   renderTable();
 };
 $('#selAll').onchange = (e) => { for (const r of state.rows) if (!locked(r.ch)) r.sel = e.target.checked; renderTable(); };
-$('#showAdv').onchange = () => $('#chTable').classList.toggle('hide-adv', !$('#showAdv').checked);
 
 // ---------- files ----------
 function stamp() { return new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-'); }
