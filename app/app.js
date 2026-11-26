@@ -122,7 +122,10 @@ async function connectWith(transport, name) {
   const client = new LitoClient(transport, state.asm);
   client.on('frame', logEntry);
   client.on('error', (err, raw) => logEntry({ dir: 'err', text: err.message, raw }));
-  client.on('unsolicited', (f) => { /* already logged; future: live updates */ });
+  client.on('unsolicited', (f) => {
+    // the radio pushes cmd 20008 (channel state) when the current channel changes; ch1 = current channel
+    if (f.cmd === 20008 && f.msg?.ch1 && state.client === client) { state.currentCh = f.msg.ch1; renderDevice(); }
+  });
   client.on('disconnect', () => {
     if (state.client === client) { state.client = null; setStatus('Not connected', 'off'); refreshButtons(); banner('Radio disconnected.', 'error'); }
   });
@@ -177,7 +180,7 @@ function renderDevice() {
     if (v && ![...el.options].some((o) => o.value === v)) { const o = document.createElement('option'); o.value = v; o.textContent = `raw ${v}`; el.appendChild(o); }
     el.value = v;
   }
-  const ch = d.ch && (typeof d.ch === 'object' ? d.ch : { chNo: d.ch });
+  const ch = state.currentCh || (d.ch && (typeof d.ch === 'object' ? d.ch : { chNo: d.ch }));
   const info = [
     ['Connected to', state.radioName],
     ['Hardware version', fmtVer(d.verHw)],
@@ -202,6 +205,8 @@ async function readDevice() {
   try { state.country = (await state.client.getCountry()).country; } catch (e) { state.country = `not read (${e.message})`; }
   const plan = typeof state.country === 'number' && planForCountry(state.country);
   if (plan && plan.id !== $('#bandPlan').value) setPlan(plan.id);
+  state.currentCh = null;
+  try { const st = await state.client.getChannelState(); if (st?.ch1) state.currentCh = st.ch1; } catch { /* radio may only push this unsolicited */ }
   renderDevice();
 }
 function deviceChanges() {
