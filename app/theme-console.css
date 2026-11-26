@@ -14,6 +14,11 @@
   font-family: "Bahnschrift Condensed", "Bahnschrift SemiCondensed", "Roboto Condensed", "Arial Narrow", "Liberation Sans Narrow", sans-serif-condensed, sans-serif;
   font-stretch: condensed; font-size: 15px; letter-spacing: .02em;
 }
+.console-only { display: none !important; }
+[data-theme=console] .console-only { display: inline-flex !important; align-items: center; gap: 6px; }
+[data-theme=console] #btnAmbience { background: var(--c-violet); }
+[data-theme=console] #btnAmbience[aria-pressed=true] { background: var(--c-gold); animation: lc-blink 2.4s steps(2) infinite; }
+[data-theme=console] #ambVol { width: 80px; accent-color: var(--c-orange); }
 [data-theme=console] ::before, [data-theme=console] ::after { box-sizing: border-box; }
 [data-theme=console] body {
   display: grid; grid-template-columns: var(--rail) minmax(0, 1fr);

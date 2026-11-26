@@ -7,6 +7,7 @@ import { DEFAULT_ASSUMPTIONS, hzToMHz, mhzToHz, cssDecode, cssParse, cssOptions,
 import { toHex, fromHex } from '../lito/frame.js';
 import { PRESETS, buildPreset } from '../lito/presets.js';
 import { cheatSheetHtml } from './cheatsheet.js';
+import * as ambience from './ambience.js';
 import { BAND_PLANS, expandRanges, planForCountry } from '../lito/bands.js';
 import { applyConfig, summarize, CLONEABLE_SETTINGS } from '../lito/sync.js';
 import {
@@ -127,7 +128,7 @@ const FUN_LABELS = {
   'Add channel': 'New frequency', 'Delete selected': 'Jettison selected', 'Undo all edits': 'Reverse course', 'Presets…': 'Flight plans…',
   'Backup…': 'Store in archive…', 'Restore…': 'Retrieve from archive…', 'Cheat sheet': 'Crew briefing', 'Export CSV': 'Export star chart',
   'Write Radios': 'Engage', 'Back up ticked radios': 'Archive the fleet', 'Add radio…': 'Recruit a vessel…', 'Load backup…': 'Retrieve from archive…',
-  'Overwrite Channels': 'Overwrite databanks', 'Append to Channels': 'Append to databanks', 'Cancel': 'Belay that',
+  'Overwrite Channels': 'Overwrite databanks', 'Append to Channels': 'Append to databanks', 'Cancel': 'Belay that', '♪ Ambience': '♪ Engines', '♪ Ambience on': '♪ Engines online',
 };
 const funOn = () => document.documentElement.dataset.theme === 'console';
 /** Set a button's text (and optionally its tooltip), applying the console theme's label when it is on. */
@@ -150,7 +151,19 @@ $('#themeSel').onchange = (e) => {
   if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
   try { if (t) localStorage.setItem('lito.theme', t); else localStorage.removeItem('lito.theme'); } catch { /* private mode */ }
   applyFunLabels();
+  if (t !== 'console' && ambience.isPlaying()) toggleAmbience(false);
 };
+// ship's ambience (console theme only, off until clicked)
+try { $('#ambVol').value = localStorage.getItem('lito.ambVol') ?? '0.4'; } catch { /* ignore */ }
+async function toggleAmbience(on) {
+  const b = $('#btnAmbience');
+  try { if (on) await ambience.start(Number($('#ambVol').value)); else await ambience.stop(); }
+  catch (e) { banner(`Ambience: ${e.message}`, 'error'); on = false; }
+  b.setAttribute('aria-pressed', String(on));
+  setLabel(b, on ? '♪ Ambience on' : '♪ Ambience', on ? 'Press to silence the engines' : 'Play a quiet engine hum, made live in your browser');
+}
+$('#btnAmbience').onclick = () => toggleAmbience(!ambience.isPlaying());
+$('#ambVol').oninput = (e) => { ambience.setVolume(Number(e.target.value)); try { localStorage.setItem('lito.ambVol', e.target.value); } catch { /* ignore */ } };
 
 // ---------- connect ----------
 async function connectWith(transport, name) {

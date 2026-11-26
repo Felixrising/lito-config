@@ -6,7 +6,11 @@
 <title>LITO Config</title>
 <link rel="stylesheet" href="app/styles.css">
 <link rel="stylesheet" href="app/theme-console.css">
-<script>try { const t = localStorage.getItem('lito.theme'); if (t) document.documentElement.dataset.theme = t; } catch {}</script>
+<script>
+  // Saved theme wins. With none saved, 8 September (Star Trek day) defaults to the Starship console theme.
+  try { const t = localStorage.getItem('lito.theme'), d = new Date();
+    if (t) document.documentElement.dataset.theme = t; else if (d.getMonth() === 8 && d.getDate() === 8) document.documentElement.dataset.theme = 'console'; } catch {}
+</script>
 </head>
 <body>
 <header>
@@ -17,6 +21,9 @@
   <div class="conn">
     <label class="small theme-pick" title="Colour theme. Auto follows your computer's light or dark setting.">Theme
       <select id="themeSel"><option value="">Auto</option><option value="dark">Dark</option><option value="light">Light</option><option value="console">Starship console</option></select></label>
+    <span class="console-only amb" title="Ship's ambience: an engine hum made live in your browser. Off until you press it.">
+      <button id="btnAmbience" aria-pressed="false">♪ Ambience</button>
+      <input type="range" id="ambVol" min="0" max="1" step="0.05" value="0.4" title="Ambience volume" aria-label="Ambience volume"></span>
     <span id="connStatus" class="pill off" title="Bluetooth connection to the radio">Not connected</span>
     <label class="small" title="Tick this if your radio doesn't appear in the Bluetooth picker: the picker then lists every nearby device, not just LITO radios."><input type="checkbox" id="acceptAll"> show all devices</label>
     <button id="btnConnect" class="primary" title="Pick your LITO in the browser's Bluetooth list. The first time, accept the connection on the radio.">Connect radio</button>
