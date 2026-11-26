@@ -177,7 +177,7 @@ dialog.modal::backdrop { background: rgba(5, 8, 12, .55); backdrop-filter: blur(
 .badge { font-size: 11.5px; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); cursor: help; }
 .badge.ok { color: var(--ok); border-color: var(--ok); background: var(--ok-soft); }
 .badge.warn { color: var(--warn); border-color: var(--warn); background: var(--warn-soft); }
-.badge.info { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.badge.blue { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
 .preset-opts { display: grid; gap: 8px; margin: 14px 0; }
 .preset-preview-head { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin: 6px 0; }
 .chips { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -243,3 +243,4 @@ dialog.modal::backdrop { background: rgba(5, 8, 12, .55); backdrop-filter: blur(
   .modal-foot .note { width: 100%; }
 }
 .badge { flex: 0 0 auto; }
+.preset-opts label.opt { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

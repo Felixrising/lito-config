@@ -46,7 +46,11 @@ function auList(list, o = {}) {
 
 const FAMILY_TONE = 269;
 
-function auAligned(last, { duplexRepeaters, dataSlots }) {
+// Repeater slots (CH1-8, CH41-48) in slot = channel presets:
+//   'duplex' talk through the repeater (+750 kHz), 'listen' receive only (TX frequency 0: experimental,
+//   see the listen-only test), 'spare' a copy of a safe simplex channel so the slot can't reach a repeater.
+function auAligned(last, { duplexRepeaters, dataSlots, repeaters, spareCh = 9 }) {
+  const mode = repeaters || (duplexRepeaters === false ? 'simplex' : 'duplex');
   const out = [];
   for (let n = 1; n <= last; n++) {
     const rx = auFreq(n);
@@ -56,7 +60,9 @@ function auAligned(last, { duplexRepeaters, dataSlots }) {
       out.push({ n, name: `CH${n} DATA NO VOICE`, rx, tx: rx });
       continue;
     }
-    out.push({ n, name: auNames(n), rx, tx: auRpt(n) && duplexRepeaters ? rx + 750 * kHz : rx });
+    if (auRpt(n) && mode === 'listen') { out.push({ n, name: `CH${n} RPT listen`, rx, tx: 0 }); continue; }
+    if (auRpt(n) && mode === 'spare') { const f = auFreq(spareCh); out.push({ n, name: `Spare = CH${spareCh}`, rx: f, tx: f }); continue; }
+    out.push({ n, name: auNames(n), rx, tx: auRpt(n) && mode === 'duplex' ? rx + 750 * kHz : rx });
   }
   return out;
 }
@@ -67,7 +73,7 @@ export const PRESETS = [
     source: 'ACMA CB Class Licence 2015',
     verified: true, slotIsChannel: true,
     notes: 'C01 holds CH1, C40 holds CH40. Slots 22 and 23 are labelled DATA NO VOICE: voice is not allowed on those channels, so never talk on them. Repeater channels 1-8 transmit +750 kHz when duplex is on.',
-    options: { duplexRepeaters: true },
+    options: { repeaters: 'duplex', spareCh: 9 },
     build: (o) => auAligned(40, o),
   },
   {
@@ -75,7 +81,7 @@ export const PRESETS = [
     source: 'ACMA CB Class Licence 2015',
     verified: true, slotIsChannel: true,
     notes: 'Uses all 60 custom slots: C01 = CH1 ... C60 = CH60. Slots 22 and 23 are labelled DATA NO VOICE (voice not allowed). Repeaters 1-8 and 41-48 transmit +750 kHz when duplex is on.',
-    options: { duplexRepeaters: true },
+    options: { repeaters: 'duplex', spareCh: 9 },
     build: (o) => auAligned(60, o),
   },
   {
@@ -83,7 +89,7 @@ export const PRESETS = [
     source: 'ACMA CB Class Licence 2015',
     verified: true, slotIsChannel: true, needsChannels: 80,
     notes: 'C01 = CH1 ... C80 = CH80. Only works if your radio holds 80 custom channels: run the channel limit test (About > developer tools > Log) first. CH22/23 are DATA NO VOICE and CH61-63 are RESERVED guard channels: never transmit on those. Repeaters 1-8 and 41-48 transmit +750 kHz when duplex is on.',
-    options: { duplexRepeaters: true },
+    options: { repeaters: 'duplex', spareCh: 9 },
     build: (o) => auAligned(80, o),
   },
   {

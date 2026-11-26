@@ -188,6 +188,17 @@
         <div id="limitResult" class="summary" style="white-space:pre-wrap"></div>
       </div>
     </details>
+    <details class="raw" open>
+      <summary>Listen-only test: will the radio store a channel with no transmit frequency?</summary>
+      <div class="rawform">
+        <p class="note">Adds ONE channel named TXOFF after your channels: receive on CH9 (476.625 MHz), transmit frequency 0. It then reads it back and reports what the radio stored. Next, select that slot on the radio and press PTT for a second: note whether it refuses (beep, "TX inhibit") or transmits. Then press the second button to delete it. Your own channels aren't changed, but back up first.</p>
+        <div class="toolbar">
+          <button id="btnTxOffTest" class="danger" disabled title="Write the TXOFF test channel and read it back">Write listen-only test channel</button>
+          <button id="btnTxOffDelete" disabled title="Delete every channel named TXOFF">Delete test channel</button>
+        </div>
+        <div id="txOffResult" class="summary" style="white-space:pre-wrap"></div>
+      </div>
+    </details>
     <div id="log" class="log"></div>
   </section>
 
@@ -258,6 +269,14 @@
       <p id="presetSource" class="note"></p>
       <div class="preset-opts">
         <label class="switch" title="Repeater channels (CH1-8 and CH41-48) transmit 750 kHz higher so they work through a repeater. Untick for simplex (talk direct, radio to radio)."><input type="checkbox" id="presetDuplex" checked><span></span> Repeater channels use duplex (+750 kHz)</label>
+        <label class="opt" title="What the repeater slots (C01-C08, C41-C48) do. Spare copies keep the C01 = CH1 numbering but can't reach a repeater, which is handy for kids' radios.">Repeater slots
+          <select id="presetRptMode">
+            <option value="duplex">Talk through the repeater (+750 kHz)</option>
+            <option value="spare">Spare: copy of a simplex channel</option>
+            <option value="listen">Listen only, no transmit (experimental)</option>
+          </select>
+          <select id="presetSpare" title="The simplex channel the spare slots copy"></select>
+        </label>
         <label class="switch" title="Also add the repeater input channels (CH31-38 and CH71-78). Most people leave these out."><input type="checkbox" id="presetInputs" checked><span></span> Include repeater input channels</label>
       </div>
       <div class="preset-preview-head"><span id="presetCount"></span></div>

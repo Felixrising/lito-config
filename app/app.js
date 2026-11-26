@@ -72,7 +72,7 @@ function refreshButtons() {
   bc.classList.toggle('primary', !c);
   bc.disabled = b && !c;
   $('#btnDemo').disabled = c || b;
-  for (const id of ['#btnReadCh', '#btnWriteCh', '#btnReadDev', '#btnWriteDev', '#btnRawSend', '#btnProbe', '#btnSlotTest', '#btnSlotDelete', '#btnLimitTest', '#btnLimitClean']) $(id).disabled = !c || b;
+  for (const id of ['#btnReadCh', '#btnWriteCh', '#btnReadDev', '#btnWriteDev', '#btnRawSend', '#btnProbe', '#btnSlotTest', '#btnSlotDelete', '#btnLimitTest', '#btnLimitClean', '#btnTxOffTest', '#btnTxOffDelete']) $(id).disabled = !c || b;
   renderFleet?.();
 }
 async function busy(label, fn) {
@@ -274,6 +274,7 @@ function freqCell(row, field, disabled) {
   if (!freqTemplates[dir]) {
     const t = document.createElement('select'); t.className = `w-freq ${dir}-freq`;
     for (const hz of expandRanges(plan[dir])) { const o = document.createElement('option'); o.value = String(hz); o.textContent = `${hzToMHz(hz)}  ${plan.name(hz)}`; t.appendChild(o); }
+    if (dir === 'tx') { const o = document.createElement('option'); o.value = '0'; o.textContent = 'No transmit (listen only)'; o.title = 'Experimental: run the listen-only test on the Log tab first'; t.appendChild(o); }
     freqTemplates[dir] = t;
   }
   const sel = freqTemplates[dir].cloneNode(true); sel.disabled = disabled;
@@ -282,7 +283,7 @@ function freqCell(row, field, disabled) {
     if (v != null && ![...sel.options].some((o) => o.value === String(v))) {
       // Keep whatever the radio or file has, but flag it: the official app wouldn't allow it.
       const o = document.createElement('option'); o.value = String(v);
-      o.textContent = `${hzToMHz(v)}  ${plan.name(v)} (not allowed)`.replace('  (', ' (');
+      o.textContent = v === 0 ? 'No transmit (listen only)' : `${hzToMHz(v)}  ${plan.name(v)} (not allowed)`.replace('  (', ' (');
       sel.insertBefore(o, sel.firstChild);
     }
     sel.value = v == null ? '' : String(v);
@@ -625,6 +626,28 @@ $('#btnLimitTest').onclick = () => busy('Channel limit test…', async () => {
   lines.push('Please check the radio screen too, then press Download log.');
   $('#limitResult').textContent = lines.join('\n');
 });
+// ---------- listen-only (TX frequency 0) test ----------
+$('#btnTxOffTest').onclick = () => busy('Listen-only test…', async () => {
+  const before = await state.client.readAllChannels();
+  const slot = before.length;
+  if (!confirm(`Write a test channel "TXOFF" (receive 476.625 MHz, transmit frequency 0) into slot C${String(slot + 1).padStart(2, '0')}?`)) return;
+  const lines = [];
+  try {
+    const r = await state.client.insertChannel({ chNo: slot, chType: SEAL_CHTYPE.SEAL_USERDEF, chName: nameToBytes('TXOFF'), chRxFreq: 476625000, chTxFreq: 0, chRxCss: 0, chTxCss: 0 });
+    lines.push(`Insert: accepted (result ${r.result ?? 0}).`);
+  } catch (e) { lines.push(`Insert: REFUSED by the radio (${e.message}). TX frequency 0 can't be used.`); $('#txOffResult').textContent = lines.join('\n'); return; }
+  const back = await state.client.readChannel(slot).catch((e) => ({ error: e.message }));
+  if (back.ch) lines.push(`Read back slot C${String(slot + 1).padStart(2, '0')}: name "${bytesToName(back.ch.chName)}", RX ${hzToMHz(back.ch.chRxFreq)}, TX ${back.ch.chTxFreq == null ? 'missing' : back.ch.chTxFreq === 0 ? '0 (stored as no transmit)' : hzToMHz(back.ch.chTxFreq) + ' MHz'}.`);
+  else lines.push(`Read back failed: ${back.error ?? 'no channel'}.`);
+  lines.push(`Now select C${String(slot + 1).padStart(2, '0')} on the radio, press PTT for a second and note what happens. Then press Delete test channel, and send the log.`);
+  $('#txOffResult').textContent = lines.join('\n');
+});
+$('#btnTxOffDelete').onclick = () => busy('Deleting TXOFF…', async () => {
+  const all = await state.client.readAllChannels();
+  const ours = all.filter((c) => bytesToName(c.chName) === 'TXOFF').map((c) => c.chNo).sort((a, b) => b - a);
+  for (const n of ours) await state.client.deleteChannel({ chNo: n, chType: SEAL_CHTYPE.SEAL_USERDEF });
+  $('#txOffResult').textContent = ours.length ? `Deleted ${ours.length} TXOFF channel(s).` : 'No TXOFF channel found.';
+});
 $('#btnLimitClean').onclick = () => busy('Removing test channels…', async () => {
   const lines = []; await removeLimitChannels(lines); $('#limitResult').textContent = lines.join('\n');
 });
@@ -646,7 +669,9 @@ $('#btnSlotDelete').onclick = () => busy('Deleting test…', async () => {
 
 // ---------- presets dialog ----------
 let presetId = null;
-const presetOpts = () => ({ duplexRepeaters: $('#presetDuplex').checked, includeRepeaterInputs: $('#presetInputs').checked });
+const presetOpts = () => ({ duplexRepeaters: $('#presetDuplex').checked, includeRepeaterInputs: $('#presetInputs').checked,
+  repeaters: $('#presetRptMode').value, spareCh: Number($('#presetSpare').value) });
+for (let n = 9; n <= 40; n++) if (n !== 22 && n !== 23) { const o = document.createElement('option'); o.value = String(n); o.textContent = `CH${n}`; $('#presetSpare').appendChild(o); }
 const REGION_COUNTRY = { au: 'Australia', nz: 'New Zealand', us: 'United States', eu: 'EU / UK', sg: 'EU / UK' };
 function renderPresetList() {
   const list = $('#presetList'); list.innerHTML = '';
@@ -671,16 +696,18 @@ function showPresetDetail() {
   $('#presetSource').textContent = `Source: ${p.source}`;
   const badges = $('#presetBadges'); badges.innerHTML = '';
   const badge = (t, cls, tip) => { const b = document.createElement('span'); b.className = `badge ${cls}`; b.textContent = t; if (tip) b.title = tip; badges.appendChild(b); };
-  if (p.slotIsChannel) badge('slot = channel', 'info', 'Each channel goes in its own numbered slot: C01 holds CH1, C10 holds CH10, and so on');
+  if (p.slotIsChannel) badge('slot = channel', 'blue', 'Each channel goes in its own numbered slot: C01 holds CH1, C10 holds CH10, and so on');
   badge(p.verified ? 'verified' : 'unverified', p.verified ? 'ok' : 'warn', p.verified ? 'Frequencies checked against the official band plan' : 'Not checked against the official rules yet');
   $('#presetDuplex').closest('label').classList.toggle('hidden', !('duplexRepeaters' in (p.options || {})));
   $('#presetInputs').closest('label').classList.toggle('hidden', !('includeRepeaterInputs' in (p.options || {})));
+  $('#presetRptMode').closest('label').classList.toggle('hidden', !('repeaters' in (p.options || {})));
+  $('#presetSpare').classList.toggle('hidden', $('#presetRptMode').value !== 'spare');
   const chans = buildPreset(p.id, presetOpts());
   $('#presetCount').textContent = `${chans.length} channels`;
   const pv = $('#presetPreview'); pv.innerHTML = '';
   for (const c of chans) {
     const chip = document.createElement('span'); chip.className = 'chip';
-    chip.textContent = c.chName; chip.title = `${hzToMHz(c.chRxFreq)} MHz${c.chTxFreq !== c.chRxFreq ? `, TX ${hzToMHz(c.chTxFreq)}` : ''}${c.chRxCss ? `, tone ${toneLabel(c.chRxCss)}` : ''}`;
+    chip.textContent = c.chName; chip.title = `${hzToMHz(c.chRxFreq)} MHz${c.chTxFreq === 0 ? ', no transmit' : c.chTxFreq !== c.chRxFreq ? `, TX ${hzToMHz(c.chTxFreq)}` : ''}${c.chRxCss ? `, tone ${toneLabel(c.chRxCss)}` : ''}`;
     pv.appendChild(chip);
   }
   const ap = $('#btnPresetAppend');
@@ -688,6 +715,7 @@ function showPresetDetail() {
   ap.title = p.slotIsChannel ? 'This preset puts each channel in its own numbered slot, so it can only overwrite your channels' : 'Keep your current channels and add these after them';
 }
 $('#presetDuplex').onchange = showPresetDetail; $('#presetInputs').onchange = showPresetDetail;
+$('#presetRptMode').onchange = showPresetDetail; $('#presetSpare').onchange = showPresetDetail;
 function openPresets() {
   if (!presetId) { const c = REGION_COUNTRY[$('#bandPlan').value]; presetId = (PRESETS.find((p) => p.country === c) || PRESETS[0]).id; }
   renderPresetList(); showPresetDetail();

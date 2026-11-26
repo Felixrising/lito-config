@@ -73,7 +73,7 @@ export function validate(rows, a = DEFAULT_ASSUMPTIONS) {
     else if (seen.has(c.chNo)) errs.push({ chNo: c.chNo, msg: 'duplicate channel number' });
     seen.add(c.chNo);
     if (!c.chRxFreq) errs.push({ chNo: c.chNo, msg: 'RX frequency missing' });
-    if (!c.chTxFreq) errs.push({ chNo: c.chNo, msg: 'TX frequency missing' });
+    if (c.chTxFreq == null) errs.push({ chNo: c.chNo, msg: 'TX frequency missing' }); // 0 = listen only (experimental)
     if (!isAsciiName(c.chName)) errs.push({ chNo: c.chNo, msg: 'name must be plain ASCII (the radio uses GBK, which the browser cannot encode)' });
     if (nameUnits(c.chName) > a.nameMaxBytes) errs.push({ chNo: c.chNo, msg: `name longer than ${a.nameMaxBytes} characters` });
   }
