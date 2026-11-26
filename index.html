@@ -50,6 +50,7 @@
       <div class="group">
         <button id="btnSave" title="Download the channels and settings as a .lito.json backup file">Backup…</button>
         <button id="btnOpen" title="Load a .lito.json backup or a CSV into the editor. Nothing is sent until you write.">Restore…</button>
+        <button id="btnCheat" title="Open a one-page printable sheet of these channels (slot, CB channel, frequency, tone, notes). Print it or save it as a PDF.">Cheat sheet</button>
         <button id="btnCsv" title="Download the channels as a spreadsheet (CSV) for Excel">Export CSV</button>
       </div>
       <input type="file" id="fileInput" accept=".json,.lito.json,.csv" hidden>
@@ -283,6 +284,7 @@
   <div class="modal-foot">
     <span class="note">Loads into the editor only. Nothing is sent to a radio until you write.</span>
     <span class="grow"></span>
+    <button id="btnPresetCheat" title="Open a one-page printable sheet of this preset, with the options chosen above. Print it or save it as a PDF.">Cheat sheet</button>
     <button id="btnPresetCancel">Cancel</button>
     <button id="btnPresetAppend" title="Keep your current channels and add these after them">Append to Channels</button>
     <button id="btnPresetReplace" class="primary" title="Replace all your custom channels with this preset">Overwrite Channels</button>

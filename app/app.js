@@ -6,6 +6,7 @@ import { codec } from '../lito/client.js';
 import { DEFAULT_ASSUMPTIONS, hzToMHz, mhzToHz, cssDecode, cssParse, cssOptions, bytesToName, nameToBytes } from '../lito/values.js';
 import { toHex, fromHex } from '../lito/frame.js';
 import { PRESETS, buildPreset } from '../lito/presets.js';
+import { cheatSheetHtml } from './cheatsheet.js';
 import { BAND_PLANS, expandRanges, planForCountry } from '../lito/bands.js';
 import { applyConfig, summarize, CLONEABLE_SETTINGS } from '../lito/sync.js';
 import {
@@ -494,6 +495,19 @@ $('#btnCsv').onclick = () => {
   if (!state.rows.length) { banner('No channels to export.'); return; }
   download(`lito-channels-${stamp()}.csv`, '﻿' + channelsToCsv(liveChannels(), state.asm), 'text/csv');
 };
+function openCheatSheet(opts) {
+  const plan = BAND_PLANS.find((p) => p.id === $('#bandPlan').value);
+  const html = cheatSheetHtml({ plan, toneLabel, ...opts });
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+  const w = window.open(url, '_blank');
+  if (!w) download(`lito-cheat-sheet-${stamp()}.html`, html, 'text/html'); // popup blocked: save it instead
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+$('#btnCheat').onclick = () => {
+  const chans = liveChannels().filter((c) => c.chType !== SEAL_CHTYPE.SEAL_PUBLIC);
+  if (!chans.length) { banner('No channels to put on a cheat sheet.'); return; }
+  openCheatSheet({ title: state.radioName ? `${state.radioName} channels` : 'Radio channels', subtitle: state.setupSource ? `From ${state.setupSource}` : 'Current channel list', channels: chans });
+};
 $('#btnOpen').onclick = () => { $('#fileInput').value = ''; $('#fileInput').click(); };
 $('#fileInput').onchange = async (e) => {
   const file = e.target.files[0]; if (!file) return;
@@ -729,6 +743,11 @@ function applyPreset(replace) {
   banner(`${replace ? 'Overwrote the channel list with' : 'Appended'} ${chans.length} channels from "${preset.name}". Review them, then press Write to radio (or Write Radios in the Bulk Programmer).`, 'ok');
 }
 $('#btnPresetReplace').onclick = () => applyPreset(true);
+$('#btnPresetCheat').onclick = () => {
+  const p = PRESETS.find((x) => x.id === presetId);
+  const mode = { duplex: 'repeater slots talk through repeaters', spare: `repeater slots are spare copies of CH${$('#presetSpare').value}`, listen: 'repeater slots are listen only' }[$('#presetRptMode').value];
+  openCheatSheet({ title: p.name, subtitle: `${p.country} preset${'repeaters' in (p.options || {}) ? ', ' + mode : ''}`, channels: buildPreset(p.id, presetOpts()) });
+};
 $('#btnPresetAppend').onclick = () => applyPreset(false);
 
 // ---------- bulk programmer ----------
