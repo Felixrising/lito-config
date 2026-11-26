@@ -1,4 +1,4 @@
-// Original synthesized "ship's engine" ambience for the Starship console theme (Web Audio API, no recordings).
+// Original synthesized "ship's engine" ambience for the Kobayashi console theme (Web Audio API, no recordings).
 // A low detuned drone, soft brown noise through a slowly drifting filter, and a faint high hum.
 // Browsers only allow audio after a click, so start() must be called from a click handler.
 

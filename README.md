@@ -69,11 +69,11 @@ Turn it on under **About**. It writes one setup to several radios.
 
 Then tick the radios and press **Write Radios**. Tick *back up each radio first* to save a backup of each radio before writing. The app refuses to write an empty setup.
 
-### Starship console theme
+### Kobayashi console theme
 
-![Starship console theme](docs/screenshots/starship-console.png)
+![Kobayashi console theme](docs/screenshots/starship-console.png)
 
-Choose **Theme → Starship console** in the header for a retro sci-fi control panel, with playful button names (hover any button for its plain name). It also plays an engine-room hum made live in your browser (no recordings). The hum is on by default at 80% and starts on your first click, because browsers don't allow sound before that. Press **♪ Engines online** to mute it; the app remembers. The theme is the default every 8 September unless you've picked one.
+Choose **Theme → Kobayashi console** in the header for a retro sci-fi control panel, with playful button names (hover any button for its plain name). It also plays an engine-room hum made live in your browser (no recordings). The hum is on by default at 80% and starts on your first click, because browsers don't allow sound before that. Press **♪ Engines online** to mute it; the app remembers. The theme is the default every 8 September unless you've picked one.
 
 ## Using it
 

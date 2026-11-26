@@ -1,4 +1,4 @@
-/* "Starship console": an optional retro sci-fi control-panel theme. Black screen, rounded elbow frames,
+/* "Kobayashi console": an optional retro sci-fi control-panel theme. Black screen, rounded elbow frames,
    pill buttons in orange / lilac / blue blocks, condensed capitals. Only active with <html data-theme="console">. */
 :root[data-theme=console] {
   color-scheme: dark;

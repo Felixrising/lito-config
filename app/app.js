@@ -121,7 +121,7 @@ $('#btnSaveLog').onclick = () => download(`lito-log-${stamp()}.json`, JSON.strin
 $('#logDecoded').onchange = () => { $('#log').innerHTML = ''; state.log.forEach(renderLogEntry); };
 
 // ---------- theme ----------
-// The Starship console theme renames the main buttons for fun; hovering shows the plain name.
+// The Kobayashi console theme renames the main buttons for fun; hovering shows the plain name.
 const FUN_LABELS = {
   'Read from radio': 'Scan for lifeforms', 'Write to radio': 'Make it so', 'Connect radio': 'Open hailing frequencies',
   'Disconnect': 'Close channel', 'Demo radio': 'Training simulation', 'Read settings': 'Run diagnostics', 'Save to radio': 'Commit to core',
