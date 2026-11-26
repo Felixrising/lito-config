@@ -186,8 +186,8 @@ function renderDevice() {
     ['Activated', d.activate ?? '—'],
     ['BT audio', d.btAudio ?? '—'],
     ['All channels public', d.isAllPublic != null ? (sw(d.isAllPublic) ? 'yes' : 'no') : '—'],
-    ['Current channel', ch ? `${ch.chNo ?? '?'}${ch.chRxFreq ? ' · ' + hzToMHz(ch.chRxFreq) + ' MHz' : ''}${ch.chName ? ' · ' + bytesToName(ch.chName) : ''}` : '—'],
-    ['Region code', state.country ?? '—'],
+    ['Current channel', ch && ch.chNo == null ? 'not reported (the radio only sends that channel\'s squelch/VOX settings)' : ch ? `${ch.chNo == null ? '?' : (ch.chType === SEAL_CHTYPE.SEAL_PUBLIC ? 'L' : 'C') + String(ch.chNo + 1).padStart(2, '0')}${ch.chRxFreq ? ' · ' + hzToMHz(ch.chRxFreq) + ' MHz' : ''}${ch.chName ? ' · ' + bytesToName(ch.chName) : ''}` : '—'],
+    ['Region', typeof state.country === 'number' ? `${planForCountry(state.country)?.label ?? 'unknown'} (country code ${state.country})` : (state.country ?? '—')],
   ];
   if (d._unknown) info.push(['Unknown fields', jsonable(d._unknown)]);
   $('#devInfo').innerHTML = '';

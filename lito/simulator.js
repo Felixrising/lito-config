@@ -37,7 +37,7 @@ export class SimulatedRadio {
       charge: 78, activate: 1, shareLoc: SEAL_SWITCH.SEAL_OFF, btAudio: 0, voiceAlert: SEAL_SWITCH.SEAL_ON,
       isAllPublic: SEAL_SWITCH.SEAL_OFF, pwsaveMode: 1, voiceType: SEAL_VOICETYPE.SEAL_VOICETYPE_ENGLISH, ch: 1,
     };
-    this.country = 61;
+    this.country = 36; // Australia (ISO 3166 numeric)
     this.seq = 0;
     this.toApp = () => {};
     this.asm = new FrameAssembler((fr) => this._handle(fr));
