@@ -1,0 +1,183 @@
+/* "Starship console": an optional retro sci-fi control-panel theme. Black screen, rounded elbow frames,
+   pill buttons in orange / lilac / blue blocks, condensed capitals. Only active with <html data-theme="console">. */
+:root[data-theme=console] {
+  color-scheme: dark;
+  --c-orange: #ff9933; --c-tan: #ffcc99; --c-lilac: #cc99ff; --c-violet: #9977dd; --c-blue: #88bbff; --c-sky: #aaddff;
+  --c-salmon: #ff7766; --c-gold: #ffbb33; --c-rose: #dd8899;
+  --bg: #000; --panel: #000; --raised: #0b0b10; --ink: #ffe2bf; --muted: #b9a6d6; --line: #2b2433; --line-strong: #4a3d5c;
+  --accent: var(--c-orange); --accent-ink: #000; --accent-soft: #2a1a08;
+  --danger: var(--c-salmon); --danger-soft: #2c0f0b; --ok: #77dd99; --ok-soft: #0d2416; --warn: var(--c-gold); --warn-soft: #2a1f05;
+  --new: #0c2016; --changed: #2a1f05; --deleted: #2c0f0b;
+  --shadow: none; --shadow-lg: 0 0 0 3px var(--c-orange), 0 30px 80px #000;
+  --r: 0;
+  --rail: 168px; --bar: 16px; --gap: 5px;
+  font-family: "Bahnschrift Condensed", "Bahnschrift SemiCondensed", "Roboto Condensed", "Arial Narrow", "Liberation Sans Narrow", sans-serif-condensed, sans-serif;
+  font-stretch: condensed; font-size: 15px; letter-spacing: .02em;
+}
+[data-theme=console] ::before, [data-theme=console] ::after { box-sizing: border-box; }
+[data-theme=console] body {
+  display: grid; grid-template-columns: var(--rail) minmax(0, 1fr);
+  grid-template-areas: "head head" "rail banner" "rail main" "foot foot"; grid-template-rows: auto auto 1fr auto;
+  column-gap: 14px; padding: 10px 12px 10px; background: #000;
+}
+[data-theme=console] button, [data-theme=console] th, [data-theme=console] legend, [data-theme=console] .tabs,
+[data-theme=console] .brand, [data-theme=console] .pill, [data-theme=console] .modal-head h3, [data-theme=console] .preset-group,
+[data-theme=console] .small, [data-theme=console] .badge, [data-theme=console] h3, [data-theme=console] h4 { text-transform: uppercase; }
+
+/* ---------- top elbow: header ---------- */
+[data-theme=console] header {
+  grid-area: head; position: relative; background: transparent; border: none; box-shadow: none;
+  padding: 6px 0 calc(var(--bar) + 10px) calc(var(--rail) + 14px); min-height: 78px; align-items: flex-start;
+}
+[data-theme=console] header::before { /* the vertical part of the elbow, joined to the bar along the bottom */
+  content: 'LC 476'; position: absolute; left: 0; top: 0; bottom: 0; width: var(--rail);
+  background: var(--c-orange); border-radius: 46px 0 0 0; color: #000; font-weight: 700; font-size: 13px;
+  display: flex; align-items: flex-start; justify-content: flex-end; padding: 10px 12px; letter-spacing: .12em;
+}
+[data-theme=console] header::after { /* the horizontal bar, with a rounded inner corner and a lilac end cap */
+  content: ''; position: absolute; left: var(--rail); right: 0; bottom: 0; height: var(--bar);
+  background:
+    linear-gradient(90deg, var(--c-orange) 0 calc(100% - 132px), #000 calc(100% - 132px) calc(100% - 127px), var(--c-lilac) calc(100% - 127px) calc(100% - 68px), #000 calc(100% - 68px) calc(100% - 63px), var(--c-blue) calc(100% - 63px));
+  border-radius: 0 99px 99px 0;
+}
+[data-theme=console] .brand { font-size: 26px; font-weight: 700; color: var(--c-orange); letter-spacing: .08em; gap: 10px; }
+[data-theme=console] .brand .logo { color: var(--c-lilac); width: 26px; height: 26px; }
+[data-theme=console] .ver { color: var(--c-lilac); font-size: 13px; }
+[data-theme=console] .conn { gap: 8px; }
+/* inner curve where the rail meets the bar */
+[data-theme=console] .brand::before {
+  content: ''; position: absolute; left: var(--rail); bottom: var(--bar); width: 30px; height: 30px;
+  background: radial-gradient(circle at 100% 0, transparent 29.5px, var(--c-orange) 30px); pointer-events: none;
+}
+
+/* ---------- left rail: tabs ---------- */
+[data-theme=console] .tabs {
+  grid-area: rail; flex-direction: column; gap: var(--gap); padding: var(--gap) 0 0; border: none; position: relative;
+}
+[data-theme=console] .tabs::after { /* the rail keeps going down to the footer */
+  content: ''; flex: 1; min-height: 40px; background: var(--c-violet); border-radius: 0 0 0 0;
+}
+[data-theme=console] .tabs button {
+  border: none; border-radius: 0; text-align: right; padding: 22px 12px 5px; color: #000; font-weight: 700; font-size: 14px;
+  letter-spacing: .08em; background: var(--c-lilac);
+}
+[data-theme=console] .tabs button:nth-of-type(6n+2) { background: var(--c-tan); }
+[data-theme=console] .tabs button:nth-of-type(6n+3) { background: var(--c-blue); }
+[data-theme=console] .tabs button:nth-of-type(6n+4) { background: var(--c-rose); }
+[data-theme=console] .tabs button:nth-of-type(6n+5) { background: var(--c-gold); }
+[data-theme=console] .tabs button:nth-of-type(6n) { background: var(--c-sky); }
+[data-theme=console] .tabs button:hover:not(:disabled) { filter: brightness(1.15); color: #000; }
+[data-theme=console] .tabs button.active { background: var(--c-orange); color: #000; box-shadow: inset -8px 0 0 #000, inset -14px 0 0 var(--c-orange); }
+[data-theme=console] main { grid-area: main; padding: 8px 0 14px; }
+[data-theme=console] .banner { grid-area: banner; margin: 0 0 6px; border-radius: 99px; padding: 8px 18px; border-width: 2px; }
+
+/* ---------- bottom elbow: footer ---------- */
+[data-theme=console] footer {
+  grid-area: foot; position: relative; border: none; color: #000; font-weight: 600; font-size: 12px;
+  padding: 10px 70px 10px calc(var(--rail) + 14px); margin-top: 0;
+  background: linear-gradient(90deg, var(--c-violet) 0 var(--rail), #000 var(--rail) calc(var(--rail) + 0px), var(--c-violet) 0);
+  border-radius: 0 0 0 46px; text-transform: uppercase; letter-spacing: .06em;
+}
+[data-theme=console] footer::after { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 56px; background: var(--c-blue); border-radius: 0 99px 99px 0; border-left: 5px solid #000; }
+
+/* ---------- controls: pills ---------- */
+[data-theme=console] button {
+  border: none; border-radius: 99px; background: var(--c-blue); color: #000; font-weight: 700; letter-spacing: .07em;
+  padding: 7px 18px; font-size: 13.5px;
+}
+[data-theme=console] button:hover:not(:disabled) { filter: brightness(1.15); }
+[data-theme=console] button:disabled { opacity: .28; }
+[data-theme=console] button.primary { background: var(--c-orange); color: #000; }
+[data-theme=console] button.danger { background: var(--c-salmon); color: #000; }
+[data-theme=console] button.danger:hover:not(:disabled) { background: var(--c-salmon); }
+[data-theme=console] .toolbar .group { gap: 4px; }
+[data-theme=console] .toolbar .group > button { margin-left: 0; border-radius: 4px; }
+[data-theme=console] .toolbar .group > button:first-child { border-radius: 99px 4px 4px 99px; }
+[data-theme=console] .toolbar .group > button:last-child { border-radius: 4px 99px 99px 4px; }
+[data-theme=console] .toolbar .group > button:only-child { border-radius: 99px; }
+[data-theme=console] .toolbar .group:nth-of-type(3n+2) > button:not(.primary):not(.danger) { background: var(--c-lilac); }
+[data-theme=console] .toolbar .group:nth-of-type(3n) > button:not(.primary):not(.danger) { background: var(--c-tan); }
+[data-theme=console] .sep { background: var(--c-violet); width: 5px; border-radius: 3px; }
+[data-theme=console] button.x { background: none; color: inherit; padding: 0 6px; }
+[data-theme=console] select, [data-theme=console] .form input:not([type=checkbox]), [data-theme=console] textarea,
+[data-theme=console] .rawform input, [data-theme=console] .rawform textarea {
+  background-color: #000; color: var(--c-tan); border: 2px solid var(--c-violet); border-radius: 12px;
+}
+[data-theme=console] select option, [data-theme=console] select optgroup { background: #000; color: var(--c-tan); }
+[data-theme=console] select optgroup { color: var(--c-lilac); }
+[data-theme=console] input[type=checkbox] { accent-color: var(--c-orange); }
+[data-theme=console] .pill { border: none; border-radius: 99px; background: var(--c-violet); color: #000; font-weight: 700; padding: 6px 14px; letter-spacing: .07em; }
+[data-theme=console] .pill.on { background: var(--ok); color: #000; }
+[data-theme=console] .pill.busy { background: var(--c-gold); color: #000; animation: lc-blink 1s steps(2) infinite; }
+@keyframes lc-blink { 50% { opacity: .55; } }
+[data-theme=console] .small { color: var(--c-lilac); letter-spacing: .06em; }
+
+/* ---------- panels: elbow frames ---------- */
+[data-theme=console] fieldset, [data-theme=console] .panel, [data-theme=console] .writebar, [data-theme=console] details.raw {
+  border: none; border-top: 12px solid var(--c-lilac); border-left: 36px solid var(--c-lilac);
+  border-radius: 34px 0 0 0; background: #000; padding: 10px 6px 12px 14px; position: relative;
+}
+[data-theme=console] .cols > fieldset:nth-child(3n+2) { border-color: var(--c-tan); }
+[data-theme=console] .cols > fieldset:nth-child(3n) { border-color: var(--c-blue); }
+[data-theme=console] fieldset.setup { border-color: var(--c-orange); }
+[data-theme=console] .writebar { border-color: var(--c-rose); border-top-width: 8px; border-left-width: 20px; border-radius: 22px 0 0 0; }
+[data-theme=console] legend { color: var(--c-orange); font-weight: 700; letter-spacing: .1em; font-size: 16px; padding: 0 8px; background: #000; }
+[data-theme=console] .info dt { color: var(--c-lilac); text-transform: uppercase; letter-spacing: .05em; }
+[data-theme=console] .info dd { color: var(--c-tan); }
+[data-theme=console] .note, [data-theme=console] .summary { color: var(--muted); }
+
+/* ---------- tables ---------- */
+[data-theme=console] .tablewrap { border: none; border-left: 10px solid var(--c-blue); border-radius: 0; background: #000; }
+[data-theme=console] th { background: #000; color: var(--c-orange); border-bottom: 3px solid var(--c-orange); letter-spacing: .09em; font-size: 12.5px; }
+[data-theme=console] th, [data-theme=console] td { border-bottom-color: #1c1824; }
+[data-theme=console] td.slot { color: var(--c-gold); font-weight: 700; }
+[data-theme=console] tbody tr:hover > td { background: #140d1c; }
+[data-theme=console] td input, [data-theme=console] td select { color: var(--c-tan); border-radius: 8px; }
+[data-theme=console] td input:hover:not(:disabled), [data-theme=console] td input:focus,
+[data-theme=console] td select:hover:not(:disabled), [data-theme=console] td select:focus { border-color: var(--c-lilac); background: #000; }
+[data-theme=console] .log { border: none; border-left: 10px solid var(--c-violet); background: #000; }
+[data-theme=console] .log .tx .d { color: var(--c-blue); } [data-theme=console] .log .rx .d { color: var(--c-orange); }
+[data-theme=console] button.twisty { background: var(--c-lilac); border: none; }
+[data-theme=console] #fleetTable button.st-on { background: var(--ok); color: #000; }
+[data-theme=console] #fleetTable button.st-busy { background: var(--c-gold); color: #000; }
+[data-theme=console] #fleetTable tr.detail > td { background: #08060c; }
+
+/* ---------- presets dialog ---------- */
+[data-theme=console] dialog.modal { border: none; border-radius: 40px 16px 40px 16px; background: #000; }
+[data-theme=console] dialog.modal::backdrop { background: rgba(0, 0, 0, .8); backdrop-filter: none; }
+[data-theme=console] .modal-head { background: var(--c-orange); color: #000; border: none; padding: 12px 22px 12px 34px; }
+[data-theme=console] .modal-head h3 { letter-spacing: .1em; font-size: 19px; }
+[data-theme=console] .modal-head .x { color: #000; }
+[data-theme=console] .modal-foot { background: #000; border-top: 6px solid var(--c-lilac); }
+[data-theme=console] .preset-list { border-right: 10px solid var(--c-lilac); }
+[data-theme=console] .preset-group { color: var(--c-orange); letter-spacing: .12em; }
+[data-theme=console] .preset-item { border-radius: 99px 8px 8px 99px; padding-left: 18px; background: #000; color: var(--c-tan); font-weight: 600; }
+[data-theme=console] .preset-item .pi-meta { color: var(--muted); }
+[data-theme=console] .preset-item:hover:not(:disabled) { background: #1a1222; border-color: transparent; }
+[data-theme=console] .preset-item.sel { background: var(--c-orange); border-color: var(--c-orange); color: #000; }
+[data-theme=console] .preset-item.sel .pi-meta { color: #000; }
+[data-theme=console] .badge { border: none; color: #000; background: var(--c-violet); font-weight: 700; }
+[data-theme=console] .badge.ok { background: var(--ok); color: #000; } [data-theme=console] .badge.warn { background: var(--c-gold); color: #000; }
+[data-theme=console] .badge.blue { background: var(--c-blue); color: #000; }
+[data-theme=console] .chip { background: #000; border: 2px solid var(--c-violet); border-radius: 99px; color: var(--c-tan); }
+[data-theme=console] .switch span { background: #2a2233; }
+[data-theme=console] .switch input:checked + span { background: var(--c-orange); }
+[data-theme=console] .preset-detail h4 { color: var(--c-orange); letter-spacing: .06em; }
+
+/* ---------- phones: rail becomes a row of pills ---------- */
+@media (max-width: 720px) {
+  [data-theme=console] body { display: flex; flex-direction: column; padding: 6px; }
+  [data-theme=console] header { padding: 8px 8px calc(var(--bar) + 8px) 64px; }
+  [data-theme=console] header::before { width: 52px; content: ''; border-radius: 26px 0 0 0; }
+  [data-theme=console] header::after { left: 52px; }
+  [data-theme=console] .brand::before { left: 52px; }
+  [data-theme=console] .tabs { flex-direction: row; padding: 6px 0; }
+  [data-theme=console] .tabs::after { display: none; }
+  [data-theme=console] .tabs button { padding: 8px 14px; border-radius: 99px; }
+  [data-theme=console] .tabs button.active { box-shadow: none; outline: 2px solid var(--c-tan); outline-offset: 2px; }
+  [data-theme=console] .toolbar .group { flex-wrap: wrap; }
+  [data-theme=console] button { letter-spacing: .03em; font-size: 13px; }
+  [data-theme=console] footer { padding: 10px 70px 10px 20px; background: var(--c-violet); border-radius: 0 0 0 26px; }
+  [data-theme=console] fieldset { border-left-width: 16px; border-radius: 22px 0 0 0; }
+  [data-theme=console] #chTable tr, [data-theme=console] #fleetTable tr { border: none; border-left: 10px solid var(--c-lilac); border-radius: 18px 0 0 18px; background: #08060c; }
+}

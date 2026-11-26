@@ -118,6 +118,14 @@ $('#btnClearLog').onclick = () => { state.log = []; $('#log').innerHTML = ''; };
 $('#btnSaveLog').onclick = () => download(`lito-log-${stamp()}.json`, JSON.stringify(state.log, (k, x) => (x instanceof Uint8Array ? toHex(x) : x), 2), 'application/json');
 $('#logDecoded').onchange = () => { $('#log').innerHTML = ''; state.log.forEach(renderLogEntry); };
 
+// ---------- theme ----------
+$('#themeSel').value = document.documentElement.dataset.theme || '';
+$('#themeSel').onchange = (e) => {
+  const t = e.target.value;
+  if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+  try { if (t) localStorage.setItem('lito.theme', t); else localStorage.removeItem('lito.theme'); } catch { /* private mode */ }
+};
+
 // ---------- connect ----------
 async function connectWith(transport, name) {
   const client = new LitoClient(transport, state.asm);

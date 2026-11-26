@@ -10,15 +10,22 @@
   --r: 8px;
   font-family: system-ui, "Segoe UI", Roboto, sans-serif; font-size: 14px; line-height: 1.4;
 }
+/* Theme: Auto follows the system; data-theme on <html> forces dark, light or console (see theme-console.css). */
+:root[data-theme=light] { color-scheme: light; }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
     --bg: #0f1216; --panel: #171b21; --raised: #1d222a; --ink: #e5e8ec; --muted: #939cab; --line: #2a3039; --line-strong: #3a424e;
     --accent: #4c9dff; --accent-ink: #06121f; --accent-soft: #15283f;
     --danger: #ff7a59; --danger-soft: #3a1f1a; --ok: #3fc98d; --ok-soft: #12301f; --warn: #f5a524; --warn-soft: #362a12;
     --new: #13301f; --changed: #33290f; --deleted: #3a1d19;
-    --shadow: 0 1px 2px rgba(0, 0, 0, .4); --shadow-lg: 0 24px 60px rgba(0, 0, 0, .6);
-  }
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4); --shadow-lg: 0 24px 60px rgba(0, 0, 0, .6);}
 }
+:root[data-theme=dark] { color-scheme: dark;
+    --bg: #0f1216; --panel: #171b21; --raised: #1d222a; --ink: #e5e8ec; --muted: #939cab; --line: #2a3039; --line-strong: #3a424e;
+    --accent: #4c9dff; --accent-ink: #06121f; --accent-soft: #15283f;
+    --danger: #ff7a59; --danger-soft: #3a1f1a; --ok: #3fc98d; --ok-soft: #12301f; --warn: #f5a524; --warn-soft: #362a12;
+    --new: #13301f; --changed: #33290f; --deleted: #3a1d19;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4); --shadow-lg: 0 24px 60px rgba(0, 0, 0, .6);}
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); min-height: 100vh; display: flex; flex-direction: column; }
 a { color: var(--accent); }
