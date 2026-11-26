@@ -69,7 +69,8 @@ function refreshButtons() {
   const c = connected(), b = state.busy;
   // one button toggles between Connect and Disconnect
   const bc = $('#btnConnect');
-  bc.textContent = c ? 'Disconnect' : 'Connect radio';
+  bc.dataset.connectTip ??= bc.title;
+  setLabel(bc, c ? 'Disconnect' : 'Connect radio', c ? 'Disconnect from the radio' : bc.dataset.connectTip);
   bc.classList.toggle('primary', !c);
   bc.disabled = b && !c;
   $('#btnDemo').disabled = c || b;
@@ -119,11 +120,36 @@ $('#btnSaveLog').onclick = () => download(`lito-log-${stamp()}.json`, JSON.strin
 $('#logDecoded').onchange = () => { $('#log').innerHTML = ''; state.log.forEach(renderLogEntry); };
 
 // ---------- theme ----------
+// The Starship console theme renames the main buttons for fun; hovering shows the plain name.
+const FUN_LABELS = {
+  'Read from radio': 'Scan for lifeforms', 'Write to radio': 'Make it so', 'Connect radio': 'Open hailing frequencies',
+  'Disconnect': 'Close channel', 'Demo radio': 'Training simulation', 'Read settings': 'Run diagnostics', 'Save to radio': 'Commit to core',
+  'Add channel': 'New frequency', 'Delete selected': 'Jettison selected', 'Undo all edits': 'Reverse course', 'Presets…': 'Flight plans…',
+  'Backup…': 'Store in archive…', 'Restore…': 'Retrieve from archive…', 'Cheat sheet': 'Crew briefing', 'Export CSV': 'Export star chart',
+  'Write Radios': 'Engage', 'Back up ticked radios': 'Archive the fleet', 'Add radio…': 'Recruit a vessel…', 'Load backup…': 'Retrieve from archive…',
+  'Overwrite Channels': 'Overwrite databanks', 'Append to Channels': 'Append to databanks', 'Cancel': 'Belay that',
+};
+const funOn = () => document.documentElement.dataset.theme === 'console';
+/** Set a button's text (and optionally its tooltip), applying the console theme's label when it is on. */
+function setLabel(el, plain, tip = el.dataset.tip ?? el.title) {
+  el.dataset.plain = plain; el.dataset.tip = tip;
+  const fun = funOn() && FUN_LABELS[plain];
+  el.textContent = fun || plain;
+  el.title = fun ? `${plain.replace(/…$/, '')}${tip ? '. ' + tip : ''}` : tip;
+}
+function applyFunLabels() {
+  for (const el of document.querySelectorAll('button')) {
+    const plain = el.dataset.plain ?? el.textContent.trim();
+    if (el.dataset.plain || FUN_LABELS[plain]) setLabel(el, plain);
+  }
+}
 $('#themeSel').value = document.documentElement.dataset.theme || '';
+applyFunLabels();
 $('#themeSel').onchange = (e) => {
   const t = e.target.value;
   if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
   try { if (t) localStorage.setItem('lito.theme', t); else localStorage.removeItem('lito.theme'); } catch { /* private mode */ }
+  applyFunLabels();
 };
 
 // ---------- connect ----------
@@ -816,7 +842,7 @@ function renderFleet() {
     ? `${fleet.filter((f) => f.client).length} of ${fleet.length} radio(s) connected, ${ready} ticked and ready. Will write ${chans} channel(s) from the Channels tab.`
     : 'No radios yet. Press Add radio… for each one.';
   $('#btnFleetApply').disabled = !ready || !chans || state.fleetBusy;
-  $('#btnFleetApply').title = chans ? '' : 'Load a setup first (step 1)';
+  setLabel($('#btnFleetApply'), 'Write Radios', chans ? 'Write the setup to every ticked radio' : 'Load a setup first (step 1)');
   $('#btnFleetBackup').disabled = !ready || state.fleetBusy;
   const off = fleet.filter((f) => !f.client);
   const quickN = off.filter(canQuick).length;
