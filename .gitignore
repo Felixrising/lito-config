@@ -1,0 +1,6 @@
+node_modules/
+*.log
+# personal radio data: never commit
+*.lito.json
+lito-log-*.json
+*.csv

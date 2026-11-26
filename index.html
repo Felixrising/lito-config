@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LITO Config</title>
+<link rel="stylesheet" href="app/styles.css">
+</head>
+<body>
+<header>
+  <div class="brand">LITO Config <span class="ver">v0.3 beta</span></div>
+  <div class="conn">
+    <span id="connStatus" class="pill off">Not connected</span>
+    <label class="small" title="Use this if your radio doesn't show up in the list"><input type="checkbox" id="acceptAll"> show all Bluetooth devices</label>
+    <button id="btnConnect" class="primary">Connect radio</button>
+    <button id="btnDemo" title="Try the app with a simulated radio">Demo radio</button>
+  </div>
+</header>
+
+<div id="banner" class="banner hidden"><span id="bannerText"></span><button id="bannerClose" class="x" title="Dismiss">×</button></div>
+
+<nav class="tabs">
+  <button data-tab="channels" class="active">Channels</button>
+  <button data-tab="radio">Radio settings</button>
+  <button data-tab="fleet" class="bulk hidden">Bulk Programmer</button>
+  <button data-tab="log" class="dev hidden">Log</button>
+  <button data-tab="assumptions" class="dev hidden">Protocol status</button>
+  <button data-tab="about">About</button>
+</nav>
+
+<main>
+  <!-- shared by the Channels tab and the Bulk Programmer -->
+    <div id="presetPanel" class="panel hidden">
+      <div class="form narrow">
+        <label>Preset <select id="presetSel"></select></label>
+        <div class="hint" id="presetNotes"></div>
+        <label>Repeater channels as duplex <input type="checkbox" id="presetDuplex" checked></label>
+        <label>Include repeater input channels <input type="checkbox" id="presetInputs" checked></label>
+      </div>
+      <div class="toolbar">
+        <button id="btnPresetReplace" class="primary">Replace the channel list with this</button>
+        <button id="btnPresetAppend">Add after the current channels</button>
+        <button id="btnPresetClose">Close</button>
+      </div>
+      <p class="note">Squelch, power and the other undecoded fields are copied from your first existing channel. Nothing is sent to a radio until you write (Write changes on the Channels tab, or Write Radios in the Bulk Programmer).</p>
+    </div>
+  <!-- Channels -->
+  <section id="tab-channels" class="tab active">
+    <div class="toolbar">
+      <button id="btnReadCh" class="primary" disabled>Read from radio</button>
+      <button id="btnWriteCh" class="danger" disabled>Write changes to radio</button>
+      <span class="sep"></span>
+      <button id="btnAddCh">Add channel</button>
+      <button id="btnDelCh">Delete selected</button>
+      <button id="btnRevert">Undo all edits</button>
+      <button id="btnPreset">Presets…</button>
+      <span class="sep"></span>
+      <button id="btnSave">Save file…</button>
+      <button id="btnOpen">Open file…</button>
+      <button id="btnCsv">Export CSV</button>
+      <input type="file" id="fileInput" accept=".json,.lito.json,.csv" hidden>
+      <span class="sep"></span>
+      <label class="small" title="Squelch, VOX, power and band: the radio stores them as numbers we haven't decoded yet"><input type="checkbox" id="showAdv"> show undecoded fields</label>
+    </div>
+    <p class="note">Hover a column heading for an explanation. <b>Pending</b> shows what Write changes will do to each row. Orange headings with ? are fields whose numbers we haven't decoded yet; they're kept exactly as the radio stores them.</p>
+    <div id="chSummary" class="summary">No channels loaded. Connect and press <b>Read from radio</b>, or open a saved file.</div>
+    <div class="tablewrap">
+      <table id="chTable" class="hide-adv">
+        <thead><tr>
+          <th><input type="checkbox" id="selAll" title="select all"></th>
+          <th title="The slot this channel shows as on the radio (C01, C02 …). The radio keeps them in order with no gaps.">Slot</th><th>Name</th><th>RX MHz</th><th>TX MHz</th>
+          <th>RX tone</th><th>TX tone</th>
+          <th class="guess adv" title="Squelch level (chSq). How the radio numbers it isn't known yet, so the raw number is shown. Your channels don't set it.">Squelch ?</th>
+          <th class="guess adv" title="Voice-activated transmit level (chVox). Raw number; meaning not confirmed.">VOX ?</th>
+          <th class="guess adv" title="Transmit power (chTxPower). Raw number; meaning not confirmed.">TX power ?</th>
+          <th class="guess adv" title="Power level (chPowerLevel). Raw number; meaning not confirmed (maybe high/low).">Power lvl ?</th>
+          <th class="guess adv" title="Band (chBand). Raw number; probably channel bandwidth (wide/narrow), not confirmed.">Band ?</th>
+          <th class="guess adv" title="chElim: stored per channel but not used by the official app.">Elim ?</th>
+          <th class="guess adv" title="chPolite stored per channel. The radio's busy lockout is set for the current channel on the Radio settings tab.">Polite ?</th>
+          <th title="What will happen to this channel when you press Write changes: new, changed, will delete, or blank if it already matches the radio.">Pending</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <datalist id="toneList"></datalist>
+  </section>
+
+  <!-- Radio settings -->
+  <section id="tab-radio" class="tab">
+    <div class="toolbar">
+      <button id="btnReadDev" class="primary" disabled>Read settings</button>
+      <button id="btnWriteDev" class="danger" disabled>Save settings to radio</button>
+    </div>
+    <div class="cols">
+      <fieldset>
+        <legend>Settings</legend>
+        <div class="form" id="devForm">
+          <label>Device name <input id="f_deviceName" maxlength="32"></label>
+          <label>Bluetooth name <input id="f_bleName" maxlength="32"></label>
+          <label>Voice prompts
+            <select id="f_voiceType"><option value="1">Off</option><option value="2">Chinese</option><option value="3">English</option></select></label>
+          <label>Voice alert <input type="checkbox" id="f_voiceAlert"></label>
+          <label>Share location <input type="checkbox" id="f_shareLoc"></label>
+          <label class="guess" title="pwsaveMode: values not confirmed yet">Power save mode (raw) ? <input id="f_pwsaveMode" type="number" min="0"></label>
+          <label title="Squelch for the channel the radio is on right now (chSq). The official app offers Normal and Sensitive.">Squelch (current channel)
+            <select id="f_chSq"><option value="">(not read)</option><option value="1">Normal</option><option value="2">Sensitive</option></select></label>
+          <label title="Voice-activated transmit for the current channel (chVox).">VOX (current channel)
+            <select id="f_chVox"><option value="">(not read)</option><option value="0">Off</option><option value="1">Low</option><option value="2">Middle</option><option value="3">High</option></select></label>
+          <label title="Channel bandwidth for the current channel (chBand).">Band (current channel)
+            <select id="f_chBand"><option value="">(not read)</option><option value="0">Wide</option><option value="1">Narrow</option></select></label>
+          <label title="Busy channel lockout for the current channel (chPolite): stops you transmitting over someone already talking.">Busy lockout (current channel)
+            <select id="f_chPolite"><option value="">(not read)</option><option value="1">Off</option><option value="2">On</option></select></label>
+        </div>
+        <p class="note">Only the fields you change are sent to the radio.</p>
+      </fieldset>
+      <fieldset>
+        <legend>Device info</legend>
+        <dl id="devInfo" class="info"><dt>Status</dt><dd>Not read yet</dd></dl>
+      </fieldset>
+    </div>
+  </section>
+
+  <!-- Fleet -->
+  <section id="tab-fleet" class="tab">
+    <p class="note">Write one setup to several radios at once. The setup is the channel list (the same one shown on the Channels tab). Windows usually manages about 5 to 7 Bluetooth radios at a time.</p>
+    <fieldset class="setup">
+      <legend>1. Setup to write</legend>
+      <div id="fleetSetup" class="summary"></div>
+      <div class="toolbar">
+        <button id="btnFleetPreset">Presets…</button>
+        <button id="btnFleetOpen">Open file…</button>
+        <button id="btnFleetFromEditor" title="The Channels tab holds the setup; edit it there">Edit in Channels tab</button>
+      </div>
+      <div class="toolbar writebar">
+        <button id="btnFleetBackup" disabled title="Reads each ticked, connected radio and downloads a .lito.json backup of it">Back up ticked radios</button>
+        <button id="btnFleetApply" class="danger" disabled>Write Radios</button>
+        <label class="small"><input type="checkbox" id="fleetBackupFirst"> back up each radio first</label>
+        <label class="small"><input type="checkbox" id="fleetSettings" checked> also copy settings (voice, alerts, location, power save; never names)</label>
+        <label class="small"><input type="checkbox" id="fleetRemove" checked> remove channels that aren't in the setup</label>
+      </div>
+      <div id="fleetSummary" class="summary"></div>
+    </fieldset>
+    <h4>2. Radios</h4>
+    <div class="toolbar">
+      <button id="btnFleetAdd" class="primary">Add radio…</button>
+      <button id="btnFleetConnectAll" class="hidden" title="Reconnects radios this browser can reach without the picker">Reconnect all</button>
+      <button id="btnFleetDemo">Add demo radio</button>
+    </div>
+    <div class="tablewrap">
+      <table id="fleetTable">
+        <thead><tr><th>Write</th><th>Radio</th><th>Firmware</th><th>Battery</th><th>Status</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p id="fleetConnectHint" class="note"></p>
+  </section>
+
+  <!-- Log -->
+  <section id="tab-log" class="tab">
+    <div class="toolbar">
+      <button id="btnClearLog">Clear</button>
+      <button id="btnSaveLog">Download log</button>
+      <button id="btnProbe" disabled title="Tries several ways of asking for the channel list and logs the answers">Probe channel paging</button>
+      <label class="small"><input type="checkbox" id="logDecoded" checked> show decoded</label>
+    </div>
+    <details class="raw">
+      <summary>Send a custom frame (for protocol research)</summary>
+      <div class="rawform">
+        <label>Command ID <input id="rawCmd" type="number" value="20003"></label>
+        <label>Payload JSON (encoded with that command's schema) <textarea id="rawJson" rows="3">{"version":1,"fullInquiry":2}</textarea></label>
+        <label>…or payload hex <input id="rawHex" placeholder="08 01 18 02"></label>
+        <button id="btnRawSend" disabled>Send</button>
+      </div>
+    </details>
+    <details class="raw" open>
+      <summary>Slot test: can a custom channel go in any slot?</summary>
+      <div class="rawform">
+        <p class="note">Writes ONE test channel named "TEST" on CH21 (476.925 MHz, simplex, no tone) into the slot below, then reads that slot and the list back. Your existing channels are not touched. Save a backup first. Delete it afterwards with the second button.</p>
+        <label>Slot number (0 = C01, 20 = C21) <input id="slotNo" type="number" value="20" min="0" max="59"></label>
+        <div class="toolbar">
+          <button id="btnSlotTest" class="danger" disabled>Write test channel</button>
+          <button id="btnSlotDelete" disabled>Delete test channel</button>
+        </div>
+        <div id="slotResult" class="summary"></div>
+      </div>
+    </details>
+    <details class="raw" open>
+      <summary>Channel limit test: how many custom channels does this radio hold?</summary>
+      <div class="rawform">
+        <p class="note">Adds test channels named LIM (for example LIM41, LIM42, on 476.925 MHz) after your existing channels, one at a time, until the radio refuses. Then it deletes only those test channels and reports the limit. Your own channels are not changed, but save a backup first. If the test is interrupted, the second button removes any leftover LIM channels.</p>
+        <div class="toolbar">
+          <button id="btnLimitTest" class="danger" disabled>Run channel limit test</button>
+          <button id="btnLimitClean" disabled>Remove leftover test channels</button>
+        </div>
+        <div id="limitResult" class="summary" style="white-space:pre-wrap"></div>
+      </div>
+    </details>
+    <div id="log" class="log"></div>
+  </section>
+
+  <!-- Assumptions -->
+  <section id="tab-assumptions" class="tab">
+    <div class="cols">
+      <fieldset>
+        <legend>Confirmed on a real radio</legend>
+        <ul class="note">
+          <li>Connecting, and skipping the accept prompt after the first time</li>
+          <li>Reading and writing custom channels (up to 60, packed list C01, C02 … with no gaps)</li>
+          <li>Frequencies, names (GBK), RX/TX tones: CTCSS and DCS</li>
+          <li>Squelch, VOX, band and busy lockout (set for the current channel)</li>
+          <li>Name limit: 18 characters (non-English characters count as 3)</li>
+          <li>Device name, Bluetooth name, voice prompts, voice alert, share location, region</li>
+        </ul>
+      </fieldset>
+      <fieldset>
+        <legend>Still unknown</legend>
+        <ul class="note">
+          <li>TX power and power level values</li>
+          <li>Power save mode values</li>
+          <li>"All channels public" flag (isAllPublic)</li>
+        </ul>
+        <p class="note">These show as raw numbers and are kept exactly as the radio stores them.</p>
+      </fieldset>
+    </div>
+    <h4>Connection settings</h4>
+    <div class="form narrow" id="asmForm"></div>
+    <div class="toolbar"><button id="btnAsmSave" class="primary">Save</button><button id="btnAsmReset">Reset to defaults</button></div>
+  </section>
+  <!-- About -->
+  <section id="tab-about" class="tab">
+    <div class="about">
+      <h3>LITO Config <span class="ver">v0.3 beta</span></h3>
+      <p>An unofficial tool for backing up and programming Beebest LITO UHF CB radios over Bluetooth, from Chrome or Edge on a PC or Android phone. It talks to the radio the same way the official BEEBEST app does; the protocol was worked out from that app and confirmed on real radios.</p>
+      <p>Not affiliated with or endorsed by Beebest. Use at your own risk, save a backup before writing, and only program channels that are legal where you use them (in Australia: no voice on channels 22 and 23).</p>
+      <h4>Help finish the decoding</h4>
+      <p>A few settings are still raw numbers (TX power, power level, power save; see Protocol status). If you work one out, for example by changing it in the official app and reading it back here:</p>
+      <ul>
+        <li>open a pull request on the project's GitHub page (<a id="repoLink" href="https://github.com/Felixrising/lito-config" target="_blank" rel="noopener">github.com/Felixrising/lito-config</a>), or</li>
+        <li>send what you changed, the old and new values, and the log file from the button below.</li>
+      </ul>
+      <div class="toolbar">
+        <button id="btnAboutLog">Download log</button>
+        <label class="small"><input type="checkbox" id="devToggle"> show developer tools (Log and Protocol status tabs)</label>
+      </div>
+      <h4>Advanced</h4>
+      <div class="toolbar">
+        <label class="small"><input type="checkbox" id="bulkToggle"> show Bulk Programmer (write one setup to several radios at once)</label>
+      </div>
+      <p class="note">The log records every message exchanged with the radio since this page was opened. It contains your radios' names, channels and Bluetooth addresses, nothing else.</p>
+    </div>
+  </section>
+</main>
+
+<footer>Unofficial tool. Not affiliated with Beebest. Works in Chrome or Edge. Check that channels you program are legal where you use them.</footer>
+
+<script type="module" src="app/app.js"></script>
+</body>
+</html>

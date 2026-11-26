@@ -1,0 +1,312 @@
+// SEAL protocol (Beebest LITO) reconstructed from BEEBEST Android app v1.1.6 (com.ifengyu.overseas)
+// Source: protobuf_seal.pb.dart BuilderInfo tables recovered with blutter. Field numbers, types,
+// labels and enum values are exact; message/field names are the app's own.
+// A108_* enums (another Beebest model) are included for reference only.
+syntax = "proto2";
+
+message SEAL_BtEarScanItem {
+  required uint32 version = 1;
+  optional SEAL_BtEarScanItem_SEAL_BTEAR_ITEM_RESULT result = 2 [default = SEAL_BTEAR_ITEM_OK];
+  optional SEAL_BtEarInfo btEar = 3;
+}
+
+message SEAL_BtEarScanControl {
+  required uint32 version = 1;
+  optional SEAL_BtEarScanControl_SEAL_BTEAR_SCAN_RESULT result = 2 [default = SEAL_BTEAR_SCAN_OK];
+  required SEAL_BtEarScanControl_SEAL_BTEAR_CONTROL option = 3 [default = SEAL_BTEAR_SCAN_START];
+}
+
+message SEAL_BtEarConnectState {
+  required uint32 version = 1;
+  optional SEAL_BtEarConnectState_SEAL_BTEAR_CONN_RESULT result = 2 [default = SEAL_BTEAR_CONN_OK];
+  optional SEAL_BtEarConnectState_SEAL_BTEAR_OPTION option = 3 [default = SEAL_BTEAR_QUERY];
+  optional SEAL_BtEarInfo btEar = 4;
+}
+
+message SEAL_BtEarInfo {
+  required bytes mac = 1;
+  required bytes name = 2;
+  required sint32 rssi = 3;
+  required SEAL_BtEarInfo_SEAL_BTEARTYPE type = 4 [default = SEAL_BTEAR_NORMAL];
+}
+
+message SEAL_UpGradeFilePack {
+  required uint32 offset = 1;
+  required bytes data = 2;
+  required uint32 xor = 3;
+}
+
+message SEAL_UpGradeFileResponse {
+  required SEAL_UpGradeFileResponse_SEAL_UP_UERR result = 1 [default = SEAL_UP_RESULT_OK];
+  optional uint32 offset = 2;
+}
+
+message SEAL_UpGradeFileRequest {
+  required uint32 version = 1;
+  required SEAL_UpGradeFileRequest_SEAL_FILECMD fCmd = 2 [default = SEAL_UP_START];
+  required SEAL_UpGradeFileRequest_SEAL_FILETYPE fType = 3 [default = SEAL_APP_UPGRADE_FILE];
+  optional uint32 fSize = 4;
+  optional uint32 fCrc32 = 5;
+}
+
+message SEAL_LocationInfo {
+  required uint32 version = 1;
+  optional SEAL_SWITCH ctlsync = 2 [default = SEAL_OFF];
+  optional uint32 userId = 3;
+  optional bytes userName = 4;
+  optional uint32 userFreq = 5;
+  optional sint32 longitude = 6;
+  optional sint32 latitude = 7;
+  optional sint32 altitude = 8;
+  optional uint32 timeSync = 9;
+  optional uint32 rxCss = 10;
+}
+
+message SEAL_ChannelInfoOperate {
+  required uint32 version = 1;
+  optional SEAL_ChannelInfoOperate_SEAL_CH_UERR result = 2 [default = SEAL_CH_OK];
+  optional SEAL_ChannelInfoOperate_SEAL_CHOPTION option = 3 [default = SEAL_CH_INSERT];
+  optional SEAL_ChannelInfo ch = 4;
+}
+
+message SEAL_ChannelStateOperate {
+  required uint32 version = 1;
+  optional SEAL_ChannelStateOperate_SEAL_ST_UERR result = 2 [default = SEAL_ST_OK];
+  optional SEAL_ChannelStateOperate_SEAL_STOPTION option = 3 [default = SEAL_ST_UPDATE];
+  optional SEAL_ChannelStateOperate_SEAL_MODE deviceMode = 4 [default = SEAL_MODE_NORMAL];
+  optional uint32 stateMode = 5;
+  optional SEAL_ChannelInfo ch1 = 6;
+}
+
+message SEAL_DeviceCountry {
+  required uint32 version = 1;
+  optional uint32 country = 2;
+  optional SEAL_DeviceCountry_SEAL_COUNTRY_UERR result = 3 [default = SEAL_COUNTRY_QUERY_OK];
+}
+
+message SEAL_DeviceParam {
+  required uint32 version = 1;
+  optional SEAL_DeviceParam_SEAL_DEV_UERR result = 2 [default = SEAL_PARAM_QUERY_OK];
+  optional SEAL_SWITCH fullInquiry = 3 [default = SEAL_OFF];
+  optional uint32 verHw = 4;
+  optional uint32 verSoft = 5;
+  optional bytes deviceName = 6;
+  optional bytes bleName = 7;
+  optional uint32 charge = 8;
+  optional uint32 activate = 9;
+  optional SEAL_SWITCH shareLoc = 10 [default = SEAL_OFF];
+  optional uint32 btAudio = 11;
+  optional SEAL_ChannelInfo ch = 12;
+  optional SEAL_SWITCH voiceAlert = 13 [default = SEAL_OFF];
+  optional SEAL_SWITCH isAllPublic = 14 [default = SEAL_OFF];
+  optional uint32 pwsaveMode = 15;
+  optional SEAL_DeviceParam_SEAL_VOICETYPE voiceType = 16 [default = SEAL_VOICETYPE_CLOSE];
+}
+
+message SEAL_ChannelInfo {
+  optional uint32 chNo = 1;
+  optional SEAL_ChannelInfo_SEAL_CHTYPE chType = 2 [default = SEAL_PUBLIC];
+  optional uint32 chTxPower = 3;
+  optional uint32 chRxFreq = 4;
+  optional uint32 chTxFreq = 5;
+  optional bytes chName = 6;
+  optional uint32 chSq = 7;
+  optional uint32 chVox = 8;
+  optional uint32 chRxCss = 9;
+  optional uint32 chTxCss = 10;
+  optional SEAL_SWITCH chElim = 11 [default = SEAL_OFF];
+  optional uint32 chBand = 12;
+  optional SEAL_SWITCH chPolite = 13 [default = SEAL_OFF];
+  optional uint32 chPowerLevel = 14;
+}
+
+message SEAL_Connect {
+  required uint32 version = 1;
+  required SEAL_CONNCODE connCode = 2 [default = SEAL_DISCONNECT];
+  optional uint32 deviceId = 3;
+  optional uint32 deviceType = 4;
+  optional SEAL_Connect_SEAL_APPTYPE appMode = 5 [default = SEAL_OWN_APP];
+  optional SEAL_Connect_SEAL_LANGUAGETYPE language = 6 [default = SEAL_CHINESE];
+  optional uint32 color = 7;
+  optional bytes btmac = 8;
+}
+
+enum A108_CONNECT_CODE {
+  ALLOW = 0;
+  REFUSE = 1;
+  WAIT = 2;
+  LOWPOWER = 3;
+  BUSY = 4;
+}
+
+enum A108_LANGUAGE_TYPE {
+  CLOSE = 0;
+  CHINESE = 1;
+  ENGLISH = 2;
+}
+
+enum A108_OtaRequest_A108_FILE_CMD {
+  START = 1;
+  COMPLETE = 2;
+  REBOOT = 3;
+}
+
+enum A108_OtaRequest_A108_FILE_TYPE {
+  APP_UPGRADE_FILE = 1;
+  MCU_UPLOAD_FILE = 2;
+}
+
+enum A108_RESULT {
+  FAIL = 0;
+  SUCCESS = 1;
+  LOW_POWER = 2;
+  FORBIDDEN = 3;
+}
+
+enum A108_SWITCH {
+  OFF = 0;
+  ON = 1;
+}
+
+enum SEAL_BtEarConnectState_SEAL_BTEAR_CONN_RESULT {
+  SEAL_BTEAR_CONN_OK = 0;
+  SEAL_BTEAR_CONN_ERROR = 1;
+  SEAL_BTEAR_CONN_TIMEOUT = 2;
+}
+
+enum SEAL_BtEarConnectState_SEAL_BTEAR_OPTION {
+  SEAL_BTEAR_QUERY = 0;
+  SEAL_BTEAR_CONNECT = 1;
+  SEAL_BTEAR_DISCONNECT = 2;
+}
+
+enum SEAL_BtEarInfo_SEAL_BTEARTYPE {
+  SEAL_BTEAR_NORMAL = 0;
+  SEAL_BTEAR_CONE = 1;
+}
+
+enum SEAL_BtEarScanControl_SEAL_BTEAR_CONTROL {
+  SEAL_BTEAR_SCAN_START = 0;
+  SEAL_BTEAR_SCAN_PAUSE = 1;
+  SEAL_BTEAR_SCAN_STOP = 2;
+}
+
+enum SEAL_BtEarScanControl_SEAL_BTEAR_SCAN_RESULT {
+  SEAL_BTEAR_SCAN_OK = 0;
+  SEAL_BTEAR_SCAN_ERROR = 1;
+}
+
+enum SEAL_BtEarScanItem_SEAL_BTEAR_ITEM_RESULT {
+  SEAL_BTEAR_ITEM_OK = 0;
+}
+
+enum SEAL_CONNCODE {
+  SEAL_DISCONNECT = 0;
+  SEAL_CONNECT = 1;
+  SEAL_ALLOW = 4;
+  SEAL_REFUSE = 5;
+  SEAL_WAIT = 6;
+  SEAL_LOWPOWER = 7;
+  SEAL_DIS_ALLOW = 8;
+  SEAL_DIS_REFUSE = 9;
+  SEAL_DIS_WAIT = 10;
+  SEAL_DIS_LOWPOWER = 11;
+  SEAL_BUSY = 12;
+}
+
+enum SEAL_ChannelInfoOperate_SEAL_CHOPTION {
+  SEAL_CH_INSERT = 0;
+  SEAL_CH_DELETE = 1;
+  SEAL_CH_MODIFY = 2;
+  SEAL_CH_QUERY = 3;
+}
+
+enum SEAL_ChannelInfoOperate_SEAL_CH_UERR {
+  SEAL_CH_OK = 0;
+  SEAL_CH_ERROR = 1;
+  SEAL_CH_EMPTY = 2;
+  SEAL_CH_FORBIDE = 3;
+  SEAL_CH_QUERY_CONTINUE = 4;
+  SEAL_CH_QUERY_FINISH = 5;
+}
+
+enum SEAL_ChannelInfo_SEAL_CHTYPE {
+  SEAL_PUBLIC = 0;
+  SEAL_REMOTE = 1;
+  SEAL_USERDEF = 2;
+}
+
+enum SEAL_ChannelStateOperate_SEAL_MODE {
+  SEAL_MODE_NORMAL = 0;
+  SEAL_SOS_T = 1;
+  SEAL_SOS_R = 2;
+  SEAL_SCAN_CH = 3;
+  SEAL_SCAN_FREQ = 4;
+  SEAL_TEAM_M = 5;
+  SEAL_TEAM_S = 6;
+}
+
+enum SEAL_ChannelStateOperate_SEAL_STOPTION {
+  SEAL_ST_UPDATE = 0;
+  SEAL_ST_QUERY = 1;
+}
+
+enum SEAL_ChannelStateOperate_SEAL_ST_UERR {
+  SEAL_ST_OK = 0;
+  SEAL_ST_ERROR = 1;
+  SEAL_ST_EMPTY = 2;
+  SEAL_ST_FORBIDE = 3;
+}
+
+enum SEAL_Connect_SEAL_APPTYPE {
+  SEAL_OWN_APP = 0;
+  SEAL_MIJIA_APP = 1;
+}
+
+enum SEAL_Connect_SEAL_LANGUAGETYPE {
+  SEAL_CHINESE = 0;
+  SEAL_ENGLISH = 1;
+}
+
+enum SEAL_DeviceCountry_SEAL_COUNTRY_UERR {
+  SEAL_COUNTRY_QUERY_OK = 1;
+  SEAL_COUNTRY_QUERY_ERROR = 2;
+  SEAL_COUNTRY_UPDATE_OK = 3;
+  SEAL_COUNTRY_UPDATE_ERROR = 4;
+}
+
+enum SEAL_DeviceParam_SEAL_DEV_UERR {
+  SEAL_PARAM_QUERY_OK = 1;
+  SEAL_PARAM_QUERY_ERROR = 2;
+  SEAL_PARAM_UPDATE_OK = 3;
+  SEAL_PARAM_UPDATE_ERROR = 4;
+}
+
+enum SEAL_DeviceParam_SEAL_VOICETYPE {
+  SEAL_VOICETYPE_CLOSE = 1;
+  SEAL_VOICETYPE_CHINESE = 2;
+  SEAL_VOICETYPE_ENGLISH = 3;
+}
+
+enum SEAL_SWITCH {
+  SEAL_OFF = 1;
+  SEAL_ON = 2;
+}
+
+enum SEAL_UpGradeFileRequest_SEAL_FILECMD {
+  SEAL_UP_START = 1;
+  SEAL_UP_COMPLE = 2;
+  SEAL_UP_REBOOT = 3;
+}
+
+enum SEAL_UpGradeFileRequest_SEAL_FILETYPE {
+  SEAL_APP_UPGRADE_FILE = 1;
+  SEAL_MCU_UPLOAD_FILE = 2;
+}
+
+enum SEAL_UpGradeFileResponse_SEAL_UP_UERR {
+  SEAL_UP_RESULT_OK = 1;
+  SEAL_UP_RESULT_ERROR = 2;
+  SEAL_UP_RESULT_LOW_POWER = 3;
+}
+
