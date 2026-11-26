@@ -194,6 +194,22 @@ async function connectWith(transport, name) {
   state.client = client;
   banner(`Connected to ${state.radioName}.`, 'ok');
   await readDevice();
+  await readOnConnect();
+}
+// Read the channels straight after connecting. Unsaved edits are only replaced if the user agrees;
+// otherwise they are kept and compared with this radio (so Write sends just the differences).
+async function readOnConnect() {
+  state.lastReadMsg = '';
+  try {
+    if (hasPendingEdits() && !confirm(`Connected to ${state.radioName}.\n\nReplace the channels in the editor (you have unsaved edits) with the radio's channels?\n\nOK: load the radio's channels.\nCancel: keep your edits and compare them with this radio.`)) {
+      await readChannelsInto(true);
+      state.lastReadMsg = `Kept your edits. The Pending column now compares them with ${state.radioName}.`;
+    } else {
+      const ch = await readChannelsInto(false);
+      state.lastReadMsg = `Read ${ch.length} channel${ch.length === 1 ? '' : 's'} from ${state.radioName}.`;
+    }
+    banner(`Connected. ${state.lastReadMsg}`, 'ok');
+  } catch (e) { banner(`Connected, but reading the channels failed: ${e.message}. Press Read from radio to try again.`, 'error'); }
 }
 
 $('#btnConnect').onclick = () => (connected() ? disconnect() : connectRadio());
@@ -204,7 +220,7 @@ const connectRadio = () => busy('Connecting…', async () => {
 $('#btnDemo').onclick = () => busy('Connecting…', async () => {
   const sim = new SimulatedRadio({ requireConfirm: true });
   await connectWith(sim.transport(), 'Simulator');
-  banner('Connected to a simulated radio (demo mode). Nothing here touches a real radio.', 'ok');
+  banner(`Connected to a simulated radio (demo mode). Nothing here touches a real radio. ${state.lastReadMsg || ''}`, 'ok');
 });
 async function disconnect() {
   const c = state.client; state.client = null; refreshButtons(); setStatus('Not connected', 'off');
@@ -439,7 +455,7 @@ function renderTable() {
 function renderSummary() {
   renderFleetSetup?.();
   const live = state.rows.filter((r) => !r.deleted);
-  if (!state.rows.length) { $('#chSummary').innerHTML = 'No channels loaded. Connect and press <b>Read from radio</b>, or press <b>Restore…</b> to load a backup.'; return; }
+  if (!state.rows.length) { $('#chSummary').innerHTML = 'No channels loaded. Connect a radio (its channels load automatically), or press <b>Restore…</b> to load a backup.'; return; }
   const user = live.filter((r) => r.ch.chType !== SEAL_CHTYPE.SEAL_PUBLIC).length;
   const max = 60;
   let s = `${user} of ${max} custom channels used.${user > max ? ` Too many: the radio holds ${max}.` : ''}`;
