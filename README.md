@@ -4,18 +4,18 @@ An unofficial browser app for backing up and programming **Beebest LITO** UHF CB
 
 **Try it:** https://felixrising.github.io/lito-config/ (Chrome or Edge on Windows, macOS, ChromeOS or Android). Press **Demo radio** to try it without a radio.
 
-> Not affiliated with or endorsed by Beebest. Use at your own risk. Save a backup before writing, and only program channels that are legal where you use them (in Australia: no voice on CH22/23, never transmit on CH61-63).
+> Not affiliated with or endorsed by Beebest. Use at your own risk. Save a backup before writing, and only program channels that are legal where you use them (in Australia: no voice on CH22/23)
 
 ## What it does
 
 - **Channels:** read, edit, add and delete the radio's custom channels (name, RX/TX frequency, CTCSS/DCS tones), then write only the differences back.
 - **Radio settings:** device and Bluetooth name, voice prompts, alerts, location sharing, and current-channel squelch, VOX, bandwidth and busy lockout.
-- **Presets:** Australian UHF CB layouts (CH1-40, CH1-60 or CH1-80 with slot = channel, essentials, touring, family), plus New Zealand, US FRS/GMRS and EU/UK PMR446.
+- **Presets:** Australian UHF CB layouts (CH1-40 or CH1-60 with slot = channel, essentials, touring, family), plus New Zealand, US FRS/GMRS and EU/UK PMR446.
 - **Files:** save and open full backups (`.lito.json`), and export or import channels as CSV.
 - **Bulk Programmer** (About > Advanced): write one setup to several radios at once.
-- **Developer tools** (About): a decoded frame log, a custom-frame sender and a channel limit test.
+- **Developer tools** (About): a decoded frame log, a custom-frame sender and a listen-only test.
 
-The radio holds 60 custom channels according to the official app. The channel limit test measures what your radio actually accepts.
+The radio holds 60 custom channels. Asking it for a 61st makes it reboot, so the app never writes more than 60.
 
 ## Using it
 

@@ -27,7 +27,7 @@ export const DEFAULT_ASSUMPTIONS = {
   timeoutMs: 4000,
   // Channel reading: confirmed from the app (radio-driven, ack with result=OK)
   queryMaxChannels: 300,
-  maxUserChannels: 60, // official app limit; measure a radio with the channel limit test
+  maxUserChannels: 60, // CONFIRMED: a 61st insert makes the radio disconnect and reboot
   nameMaxBytes: 18,     // CONFIRMED from the app: 18 units, ASCII = 1, any other character = 3
 };
 

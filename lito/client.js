@@ -12,6 +12,8 @@ export const codec = createCodec(MESSAGES);
 
 export class ProtocolError extends Error {}
 
+export const MAX_USER_CHANNELS = 60;
+
 export class LitoClient {
   constructor(transport, opts = {}) {
     this.t = transport;
@@ -211,7 +213,11 @@ export class LitoClient {
     if (r.result !== SEAL_CH_UERR.SEAL_CH_OK) throw new ProtocolError(`channel ${ch.chNo}: ${enumName(SEAL_CH_UERR, r.result)}`);
     return r;
   }
-  insertChannel(ch) { return this.editChannel(SEAL_CHOPTION.SEAL_CH_INSERT, ch); }
+  insertChannel(ch) {
+    // The radio holds 60 custom channels and reboots (instead of refusing) when asked to insert a 61st.
+    if (ch.chType !== SEAL_CHTYPE.SEAL_PUBLIC && ch.chNo >= MAX_USER_CHANNELS) return Promise.reject(new Error(`slot ${ch.chNo + 1} is past the radio's 60-channel limit`));
+    return this.editChannel(SEAL_CHOPTION.SEAL_CH_INSERT, ch);
+  }
   modifyChannel(ch) { return this.editChannel(SEAL_CHOPTION.SEAL_CH_MODIFY, ch); }
   deleteChannel(ch) { return this.editChannel(SEAL_CHOPTION.SEAL_CH_DELETE, { chNo: ch.chNo, chType: ch.chType }); }
 }

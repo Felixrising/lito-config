@@ -85,14 +85,6 @@ export const PRESETS = [
     build: (o) => auAligned(60, o),
   },
   {
-    id: 'au-ch1-80', country: 'Australia', name: 'CH1-80, slot = channel (needs an 80-channel radio)',
-    source: 'ACMA CB Class Licence 2015',
-    verified: true, slotIsChannel: true, needsChannels: 80,
-    notes: 'C01 = CH1 ... C80 = CH80. Only works if your radio holds 80 custom channels: run the channel limit test (About > developer tools > Log) first. CH22/23 are DATA NO VOICE and CH61-63 are RESERVED guard channels: never transmit on those. Repeaters 1-8 and 41-48 transmit +750 kHz when duplex is on.',
-    options: { repeaters: 'duplex', spareCh: 9 },
-    build: (o) => auAligned(80, o),
-  },
-  {
     id: 'au-essentials', country: 'Australia', name: 'Essentials (8 channels)',
     source: 'ACMA CB Class Licence 2015; common Australian channel conventions',
     verified: true,

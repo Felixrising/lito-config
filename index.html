@@ -177,14 +177,11 @@
         <div id="slotResult" class="summary"></div>
       </div>
     </details>
-    <details class="raw" open>
-      <summary>Channel limit test: how many custom channels does this radio hold?</summary>
+    <details class="raw">
+      <summary>Remove leftover LIM test channels</summary>
       <div class="rawform">
-        <p class="note">Adds test channels named LIM (for example LIM41, LIM42, on 476.925 MHz) after your existing channels, one at a time, until the radio refuses. Then it deletes only those test channels and reports the limit. Your own channels are not changed, but save a backup first. If the test is interrupted, the second button removes any leftover LIM channels.</p>
-        <div class="toolbar">
-          <button id="btnLimitTest" class="danger" disabled>Run channel limit test</button>
-          <button id="btnLimitClean" disabled>Remove leftover test channels</button>
-        </div>
+        <p class="note">The channel limit test is gone: the radio holds 60 custom channels and reboots if asked for a 61st. If an earlier test left channels named LIM41, LIM42 … this removes only those.</p>
+        <div class="toolbar"><button id="btnLimitClean" disabled>Remove leftover test channels</button></div>
         <div id="limitResult" class="summary" style="white-space:pre-wrap"></div>
       </div>
     </details>

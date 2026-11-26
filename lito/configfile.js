@@ -64,7 +64,7 @@ export function rowStatus(snapshot, row) {
 export function validate(rows, a = DEFAULT_ASSUMPTIONS) {
   const errs = [], seen = new Set();
   const users = rows.filter((r) => !r.deleted && r.ch.chType !== SEAL_CHTYPE.SEAL_PUBLIC).length;
-  const max = a.maxUserChannels ?? 60;
+  const max = Math.min(a.maxUserChannels ?? 60, 60); // hard limit: more makes the radio reboot
   if (users > max) errs.push({ chNo: '-', msg: `${users} channels, but the radio holds at most ${max} (see Max custom channels)` });
   for (const r of rows) {
     if (r.deleted) continue;

@@ -72,7 +72,7 @@ function refreshButtons() {
   bc.classList.toggle('primary', !c);
   bc.disabled = b && !c;
   $('#btnDemo').disabled = c || b;
-  for (const id of ['#btnReadCh', '#btnWriteCh', '#btnReadDev', '#btnWriteDev', '#btnRawSend', '#btnProbe', '#btnSlotTest', '#btnSlotDelete', '#btnLimitTest', '#btnLimitClean', '#btnTxOffTest', '#btnTxOffDelete']) $(id).disabled = !c || b;
+  for (const id of ['#btnReadCh', '#btnWriteCh', '#btnReadDev', '#btnWriteDev', '#btnRawSend', '#btnProbe', '#btnSlotTest', '#btnSlotDelete', '#btnLimitClean', '#btnTxOffTest', '#btnTxOffDelete']) $(id).disabled = !c || b;
   renderFleet?.();
 }
 async function busy(label, fn) {
@@ -378,7 +378,7 @@ function renderSummary() {
   const live = state.rows.filter((r) => !r.deleted);
   if (!state.rows.length) { $('#chSummary').innerHTML = 'No channels loaded. Connect and press <b>Read from radio</b>, or press <b>Restore…</b> to load a backup.'; return; }
   const user = live.filter((r) => r.ch.chType !== SEAL_CHTYPE.SEAL_PUBLIC).length;
-  const max = state.asm.maxUserChannels ?? 60;
+  const max = 60;
   let s = `${user} of ${max} custom channels used.${user > max ? ` Too many: the radio holds ${max}.` : ''}`;
   if (state.haveSnapshot) {
     const d = diffChannels(state.snapshot, state.rows);
@@ -599,55 +599,6 @@ async function removeLimitChannels(lines) {
   lines.push(`Removed ${ours.length} test channel(s). The radio now has ${after.length} custom channels.`);
   return after;
 }
-$('#btnLimitTest').onclick = () => busy('Channel limit test…', async () => {
-  const lines = [];
-  const before = await state.client.readAllChannels();
-  if (!confirm(`Channel limit test\n\nThe radio has ${before.length} custom channels. This adds test channels named LIM${before.length + 1}, LIM${before.length + 2}, … (476.925 MHz) one at a time until the radio refuses, then deletes only those test channels. Your channels are not changed.\n\nSave a backup first (Channels tab > Backup…). Continue?`)) return;
-  lines.push(`Before: ${before.length} custom channels.`);
-  let ok = before.length, why = 'stopped at the safety limit (128)';
-  try {
-    for (let slot = before.length; slot < 128; slot++) {
-      const name = `LIM${slot + 1}`;
-      $('#limitResult').textContent = `Writing ${name}…`;
-      try { await state.client.insertChannel({ chNo: slot, chType: SEAL_CHTYPE.SEAL_USERDEF, chName: nameToBytes(name), chRxFreq: 476925000, chTxFreq: 476925000, chRxCss: 0, chTxCss: 0 }); }
-      catch (e) { why = `the radio refused channel ${slot + 1} (${e.message})`; break; }
-      const back = await state.client.readChannel(slot).catch(() => null);
-      if (!back?.ch || bytesToName(back.ch.chName) !== name) { why = `channel ${slot + 1} was accepted but did not read back`; break; }
-      ok = slot + 1;
-    }
-  } finally {
-    lines.push(`Result: the radio holds ${ok} custom channels (${why}).`);
-    await removeLimitChannels(lines);
-  }
-  if (ok > (state.asm.maxUserChannels ?? 60)) {
-    state.asm = { ...state.asm, maxUserChannels: ok }; localStorage.setItem(ASM_KEY, JSON.stringify(state.asm)); renderAssumptions(); renderSummary();
-    lines.push(`Max custom channels is now set to ${ok}, so larger presets can be written.`);
-  }
-  lines.push('Please check the radio screen too, then press Download log.');
-  $('#limitResult').textContent = lines.join('\n');
-});
-// ---------- listen-only (TX frequency 0) test ----------
-$('#btnTxOffTest').onclick = () => busy('Listen-only test…', async () => {
-  const before = await state.client.readAllChannels();
-  const slot = before.length;
-  if (!confirm(`Write a test channel "TXOFF" (receive 476.625 MHz, transmit frequency 0) into slot C${String(slot + 1).padStart(2, '0')}?`)) return;
-  const lines = [];
-  try {
-    const r = await state.client.insertChannel({ chNo: slot, chType: SEAL_CHTYPE.SEAL_USERDEF, chName: nameToBytes('TXOFF'), chRxFreq: 476625000, chTxFreq: 0, chRxCss: 0, chTxCss: 0 });
-    lines.push(`Insert: accepted (result ${r.result ?? 0}).`);
-  } catch (e) { lines.push(`Insert: REFUSED by the radio (${e.message}). TX frequency 0 can't be used.`); $('#txOffResult').textContent = lines.join('\n'); return; }
-  const back = await state.client.readChannel(slot).catch((e) => ({ error: e.message }));
-  if (back.ch) lines.push(`Read back slot C${String(slot + 1).padStart(2, '0')}: name "${bytesToName(back.ch.chName)}", RX ${hzToMHz(back.ch.chRxFreq)}, TX ${back.ch.chTxFreq == null ? 'missing' : back.ch.chTxFreq === 0 ? '0 (stored as no transmit)' : hzToMHz(back.ch.chTxFreq) + ' MHz'}.`);
-  else lines.push(`Read back failed: ${back.error ?? 'no channel'}.`);
-  lines.push(`Now select C${String(slot + 1).padStart(2, '0')} on the radio, press PTT for a second and note what happens. Then press Delete test channel, and send the log.`);
-  $('#txOffResult').textContent = lines.join('\n');
-});
-$('#btnTxOffDelete').onclick = () => busy('Deleting TXOFF…', async () => {
-  const all = await state.client.readAllChannels();
-  const ours = all.filter((c) => bytesToName(c.chName) === 'TXOFF').map((c) => c.chNo).sort((a, b) => b - a);
-  for (const n of ours) await state.client.deleteChannel({ chNo: n, chType: SEAL_CHTYPE.SEAL_USERDEF });
-  $('#txOffResult').textContent = ours.length ? `Deleted ${ours.length} TXOFF channel(s).` : 'No TXOFF channel found.';
-});
 $('#btnLimitClean').onclick = () => busy('Removing test channels…', async () => {
   const lines = []; await removeLimitChannels(lines); $('#limitResult').textContent = lines.join('\n');
 });
@@ -841,7 +792,7 @@ function fleetDetail(f) {
   bCopy.title = 'Copy these channels into the editor, e.g. to use this radio as the master setup';
   bCopy.disabled = !f.channels; bCopy.onclick = () => fleetToEditor(f);
   const note = document.createElement('span'); note.className = 'small';
-  note.textContent = !f.client ? 'Connect this radio to read its channels.' : f.reading ? 'Reading…' : f.channels ? `${f.channels.length} of ${state.asm.maxUserChannels ?? 60} custom channels` : '';
+  note.textContent = !f.client ? 'Connect this radio to read its channels.' : f.reading ? 'Reading…' : f.channels ? `${f.channels.length} of 60 custom channels` : '';
   bar.append(bRead, bCopy, note); td.appendChild(bar);
   if (f.channels?.length) {
     const t = document.createElement('table'); t.className = 'mini';
@@ -1033,7 +984,6 @@ $('#bulkToggle').onchange = () => { localStorage.setItem(BULK_KEY, $('#bulkToggl
 const ASM_FIELDS = [
   ['chunkSize', 'Bytes per Bluetooth write', 'Set to 20 if writes fail.'],
   ['timeoutMs', 'Response timeout (ms)', ''],
-  ['maxUserChannels', 'Max custom channels', 'The official app allows 60. The channel limit test on the Log tab measures your radio and sets this.'],
   ['queryMaxChannels', 'Max channels to read', 'Safety stop while reading.'],
   ['nameMaxBytes', 'Max channel name length', 'The official app allows 18 (non-English characters count as 3).'],
 ];
