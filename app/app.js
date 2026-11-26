@@ -232,9 +232,43 @@ $('#btnWriteDev').onclick = () => busy('Writing…', async () => {
 });
 
 // ---------- channels ----------
+// One prebuilt tone <select>, cloned for every cell (about 200 options each).
+let toneTemplate = null;
 function toneOptions() {
-  const dl = $('#toneList'); dl.innerHTML = '';
-  for (const o of cssOptions(state.asm)) { const op = document.createElement('option'); op.value = o.label; dl.appendChild(op); }
+  const sel = document.createElement('select'); sel.className = 'w-tone';
+  const groups = { Off: sel, CTCSS: null, 'DCS normal': null, 'DCS inverted': null };
+  for (const o of cssOptions(state.asm)) {
+    const g = o.value === 0 ? 'Off' : o.label.startsWith('D') ? (o.label.endsWith('N') ? 'DCS normal' : 'DCS inverted') : 'CTCSS';
+    if (!groups[g]) { groups[g] = document.createElement('optgroup'); groups[g].label = g; sel.appendChild(groups[g]); }
+    const op = document.createElement('option'); op.value = String(o.value); op.textContent = o.label; groups[g].appendChild(op);
+  }
+  toneTemplate = sel;
+}
+function addRawOption(sel, v, label) {
+  if (v == null || [...sel.options].some((o) => o.value === String(v))) return;
+  const o = document.createElement('option'); o.value = String(v); o.textContent = label; sel.insertBefore(o, sel.firstChild);
+}
+function toneCell(row, field, disabled) {
+  const sel = toneTemplate.cloneNode(true); sel.disabled = disabled;
+  const v = row.ch[field];
+  // Values like 256 or 512 also mean "off"; keep them as they are so an unchanged channel isn't rewritten.
+  if (v != null) addRawOption(sel, v, toneLabel(v) === 'Off' ? 'Off' : `${toneLabel(v)} (raw ${v})`);
+  sel.value = v == null ? '0' : String(v);
+  sel.onchange = () => { row.ch[field] = Number(sel.value); renderRowStatus(row); };
+  const td = document.createElement('td'); td.appendChild(sel); return td;
+}
+const SQ_OPTS = [['1', 'Normal'], ['2', 'Sensitive']];
+const VOX_OPTS = [['0', 'Off'], ['1', 'Low'], ['2', 'Middle'], ['3', 'High']];
+const BAND_OPTS = [['0', 'Wide'], ['1', 'Narrow']];
+function selectCell(row, field, opts, disabled) {
+  const sel = document.createElement('select'); sel.disabled = disabled;
+  const blank = document.createElement('option'); blank.value = ''; blank.textContent = '–'; sel.appendChild(blank);
+  for (const [v, l] of opts) { const o = document.createElement('option'); o.value = v; o.textContent = l; sel.appendChild(o); }
+  const v = row.ch[field];
+  if (v != null && !opts.some(([x]) => x === String(v))) { const o = document.createElement('option'); o.value = String(v); o.textContent = `raw ${v}`; sel.appendChild(o); }
+  sel.value = v == null ? '' : String(v);
+  sel.onchange = () => { if (sel.value === '') delete row.ch[field]; else row.ch[field] = Number(sel.value); renderRowStatus(row); };
+  const td = document.createElement('td'); td.appendChild(sel); return td;
 }
 const locked = (ch) => ch.chType === SEAL_CHTYPE.SEAL_PUBLIC && !state.asm.editLocked;
 
@@ -284,13 +318,15 @@ function renderTable() {
     tr.appendChild(cellInput(row, 'chName', 'w-name', { get: (c) => c.chName ?? '', set: (s) => s, disabled: lk }));
     tr.appendChild(cellInput(row, 'chRxFreq', 'w-freq', { get: (c) => hzToMHz(c.chRxFreq), set: (s) => mhzToHz(s), disabled: lk }));
     tr.appendChild(cellInput(row, 'chTxFreq', 'w-freq', { get: (c) => hzToMHz(c.chTxFreq), set: (s) => mhzToHz(s), disabled: lk }));
-    tr.appendChild(cellInput(row, 'chRxCss', 'w-tone', { get: (c) => toneLabel(c.chRxCss), set: (s) => cssParse(s, state.asm), disabled: lk, list: 'toneList' }));
-    tr.appendChild(cellInput(row, 'chTxCss', 'w-tone', { get: (c) => toneLabel(c.chTxCss), set: (s) => cssParse(s, state.asm), disabled: lk, list: 'toneList' }));
-    for (const f of ['chSq', 'chVox', 'chTxPower', 'chPowerLevel', 'chBand']) {
-      const td = cellInput(row, f, 'w-n', { get: (c) => c[f] ?? '', set: numSet, disabled: lk, type: 'number' });
-      td.classList.add('adv'); tr.appendChild(td);
-    }
-    for (const f of ['chElim', 'chPolite']) { const td = switchCell(row, f, lk); td.classList.add('adv'); tr.appendChild(td); }
+    tr.appendChild(toneCell(row, 'chRxCss', lk));
+    tr.appendChild(toneCell(row, 'chTxCss', lk));
+    const adv = (td) => { td.classList.add('adv'); tr.appendChild(td); };
+    adv(selectCell(row, 'chSq', SQ_OPTS, lk));
+    adv(selectCell(row, 'chVox', VOX_OPTS, lk));
+    adv(selectCell(row, 'chBand', BAND_OPTS, lk));
+    adv(switchCell(row, 'chPolite', lk));
+    // chElim is kept as read but not shown: the official app doesn't use it.
+    for (const f of ['chTxPower', 'chPowerLevel']) adv(cellInput(row, f, 'w-n', { get: (c) => c[f] ?? '', set: numSet, disabled: lk, type: 'number' }));
     const st = document.createElement('td'); st.className = 'status'; tr.appendChild(st);
     tb.appendChild(tr);
     renderRowStatus(row);

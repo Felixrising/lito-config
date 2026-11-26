@@ -42,7 +42,7 @@
         <button id="btnPresetAppend">Add after the current channels</button>
         <button id="btnPresetClose">Close</button>
       </div>
-      <p class="note">Squelch, power and the other undecoded fields are copied from your first existing channel. Nothing is sent to a radio until you write (Write changes on the Channels tab, or Write Radios in the Bulk Programmer).</p>
+      <p class="note">Squelch, VOX, band, busy lockout and power are copied from your first existing channel. Nothing is sent to a radio until you write (Write changes on the Channels tab, or Write Radios in the Bulk Programmer).</p>
     </div>
   <!-- Channels -->
   <section id="tab-channels" class="tab active">
@@ -60,7 +60,7 @@
       <button id="btnCsv">Export CSV</button>
       <input type="file" id="fileInput" accept=".json,.lito.json,.csv" hidden>
       <span class="sep"></span>
-      <label class="small" title="Squelch, VOX, power and band: the radio stores them as numbers we haven't decoded yet"><input type="checkbox" id="showAdv"> show undecoded fields</label>
+      <label class="small" title="Squelch, VOX, band, busy lockout and TX power for each channel"><input type="checkbox" id="showAdv"> show more channel settings</label>
     </div>
     <p class="note">Hover a column heading for an explanation. <b>Pending</b> shows what Write changes will do to each row. Orange headings with ? are fields whose numbers we haven't decoded yet; they're kept exactly as the radio stores them.</p>
     <div id="chSummary" class="summary">No channels loaded. Connect and press <b>Read from radio</b>, or open a saved file.</div>
@@ -70,19 +70,17 @@
           <th><input type="checkbox" id="selAll" title="select all"></th>
           <th title="The slot this channel shows as on the radio (C01, C02 …). The radio keeps them in order with no gaps.">Slot</th><th>Name</th><th>RX MHz</th><th>TX MHz</th>
           <th>RX tone</th><th>TX tone</th>
-          <th class="guess adv" title="Squelch level (chSq). How the radio numbers it isn't known yet, so the raw number is shown. Your channels don't set it.">Squelch ?</th>
-          <th class="guess adv" title="Voice-activated transmit level (chVox). Raw number; meaning not confirmed.">VOX ?</th>
-          <th class="guess adv" title="Transmit power (chTxPower). Raw number; meaning not confirmed.">TX power ?</th>
-          <th class="guess adv" title="Power level (chPowerLevel). Raw number; meaning not confirmed (maybe high/low).">Power lvl ?</th>
-          <th class="guess adv" title="Band (chBand). Raw number; probably channel bandwidth (wide/narrow), not confirmed.">Band ?</th>
-          <th class="guess adv" title="chElim: stored per channel but not used by the official app.">Elim ?</th>
-          <th class="guess adv" title="chPolite stored per channel. The radio's busy lockout is set for the current channel on the Radio settings tab.">Polite ?</th>
+          <th class="adv" title="Squelch: Normal or Sensitive">Squelch</th>
+          <th class="adv" title="Voice-activated transmit: Off, Low, Middle or High">VOX</th>
+          <th class="adv" title="Channel bandwidth: Wide or Narrow">Band</th>
+          <th class="adv" title="Busy lockout: blocks transmitting while the channel is busy">Busy lockout</th>
+          <th class="guess adv" title="Transmit power (chTxPower). Raw number: what the values mean isn't known yet.">TX power ?</th>
+          <th class="guess adv" title="Power level (chPowerLevel). Raw number: what the values mean isn't known yet.">Power lvl ?</th>
           <th title="What will happen to this channel when you press Write changes: new, changed, will delete, or blank if it already matches the radio.">Pending</th>
         </tr></thead>
         <tbody></tbody>
       </table>
     </div>
-    <datalist id="toneList"></datalist>
   </section>
 
   <!-- Radio settings -->
