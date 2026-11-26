@@ -1,6 +1,8 @@
 // Printable one-page channel cheat sheet (A4). The radio's screen only shows C01, C02..., so this
 // sheet tells people which CB channel each slot is and what it is for.
 
+import { t, getLang } from './i18n.js';
+
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const mhz = (hz) => (hz / 1e6).toFixed(hz % 5000 ? 5 : 4);
 
@@ -29,12 +31,13 @@ export function cheatRows(channels, { plan, toneLabel = () => '' } = {}) {
     }
     if (!tx) notes.push('Listen only');
     else if (au && n && (n <= 8 || (n >= 41 && n <= 48)) && tx === rx + 750000) notes.push('Repeater');
-    else if (tx !== rx) notes.push(`TX ${mhz(tx)}`);
+    else if (tx !== rx) notes.push(['TX {f}', mhz(tx)]);
     const tl = (v) => { const t = v ? String(toneLabel(v)) : ''; return /^\d+(\.\d+)?$/.test(t) ? `${t} Hz` : t; };
+    const cls = notes.some((x) => /^Emergency/.test(x)) ? 'em' : notes.some((x) => /^(Data only|Reserved|Listen only)$/.test(x)) ? 'mute' : '';
     const rt = tl(c.chRxCss), tt = tl(c.chTxCss);
     const tone = rt === tt ? rt : [tt && `TX ${tt}`, rt && `RX ${rt}`].filter(Boolean).join(' / ');
     const chLabel = au ? (n ? `CH${n}` : '') : (plan?.name(rx) || '');
-    return { slot: `C${String(c.chNo + 1).padStart(2, '0')}`, ch: chLabel, name: c.chName, freq: mhz(rx), tone, notes: notes.join('; ') };
+    return { slot: `C${String(c.chNo + 1).padStart(2, '0')}`, ch: chLabel, name: c.chName, freq: mhz(rx), tone, cls, notes: notes.map((x) => (Array.isArray(x) ? t(x[0], { f: x[1] }) : t(x))).join('; ') };
   });
 }
 
@@ -45,11 +48,11 @@ export function cheatSheetHtml({ title, subtitle = '', channels, plan, toneLabel
   const halves = split < rows.length ? [rows.slice(0, split), rows.slice(split)] : [rows];
   const dense = rows.length > 40 ? ' dense' : rows.length <= 24 ? ' roomy' : '';
   const hasTone = rows.some((r) => r.tone);
-  const table = (list) => `<table><thead><tr><th>Slot</th><th>Ch</th><th>Name</th><th>MHz</th>${hasTone ? '<th>Tone</th>' : ''}<th>Notes</th></tr></thead><tbody>${
-    list.map((r) => `<tr${/Emergency/.test(r.notes) ? ' class="em"' : /Data only|Reserved|Listen only/.test(r.notes) ? ' class="mute"' : ''}><td class="slot">${esc(r.slot)}</td><td>${esc(r.ch)}</td><td>${esc(r.name)}</td><td class="num">${esc(r.freq)}</td>${hasTone ? `<td>${esc(r.tone)}</td>` : ''}<td class="notes">${esc(r.notes)}</td></tr>`).join('')
+  const table = (list) => `<table><thead><tr><th>${t('Slot')}</th><th>${t('Ch')}</th><th>${t('Name')}</th><th>MHz</th>${hasTone ? `<th>${t('Tone')}</th>` : ''}<th>${t('Notes')}</th></tr></thead><tbody>${
+    list.map((r) => `<tr${r.cls ? ` class="${r.cls}"` : ''}><td class="slot">${esc(r.slot)}</td><td>${esc(r.ch)}</td><td>${esc(r.name)}</td><td class="num">${esc(r.freq)}</td>${hasTone ? `<td>${esc(r.tone)}</td>` : ''}<td class="notes">${esc(r.notes)}</td></tr>`).join('')
   }</tbody></table>`;
-  const date = new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)} - cheat sheet</title><style>
+  const date = new Date().toLocaleDateString(getLang(), { day: 'numeric', month: 'short', year: 'numeric' });
+  return `<!DOCTYPE html><html lang="${getLang()}"><head><meta charset="utf-8"><title>${esc(title)} - ${t('Cheat sheet')}</title><style>
 @page { size: A4 portrait; margin: 10mm; }
 * { box-sizing: border-box; }
 html { background: #1b1d21; }
@@ -75,12 +78,12 @@ footer { margin-top: 3mm; font-size: 7.5pt; color: #555; border-top: 1px solid #
 @media print { html { background: #fff; } .bar { display: none; } .page { margin: 0; width: auto; min-height: 0; padding: 0; }
   tr { break-inside: avoid; } * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style></head><body>
-<div class="bar"><button onclick="print()">Print or save as PDF</button><button class="alt" onclick="close()">Close</button></div>
+<div class="bar"><button onclick="print()">${t('Print or save as PDF')}</button><button class="alt" onclick="close()">${t('Close')}</button></div>
 <div class="page${dense}">
 <header><div><h1>${esc(title)}</h1><div class="sub">${esc(subtitle)}</div></div>
-<div class="meta">${rows.length} channels · ${esc(date)}<br><br>Radio: <span class="line"></span></div></header>
+<div class="meta">${t('{n} channels', { n: rows.length })} · ${esc(date)}<br><br>${t('Radio')}: <span class="line"></span></div></header>
 <div class="cols">${halves.map(table).join('')}</div>
-<footer>The radio screen shows the slot (C01, C02...), not the name. Tone: the radio only hears others using the same tone, so everyone in the group needs the same setting.
-${plan && (plan.id === 'au' || plan.id === 'nz') ? ' CH5 and CH35 are for emergencies only. CH22 and CH23 are data only, no voice.' : ''} Check channels are legal where you use them.</footer>
+<footer>${t('The radio screen shows the slot (C01, C02...), not the name. Tone: the radio only hears others using the same tone, so everyone in the group needs the same setting.')}
+${plan && (plan.id === 'au' || plan.id === 'nz') ? ' ' + t('CH5 and CH35 are for emergencies only. CH22 and CH23 are data only, no voice.') : ''} ${t('Check channels are legal where you use them.')}</footer>
 </div></body></html>`;
 }

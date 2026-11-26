@@ -30,6 +30,8 @@
     <span>LITO Config</span> <span class="ver">v0.3 beta</span>
   </div>
   <div class="conn">
+    <label class="small" title="Language">🌐
+      <select id="langSel" aria-label="Language" data-i18n-skip></select></label>
     <label class="small theme-pick" title="Colour theme. Auto follows your computer's light or dark setting.">Theme
       <select id="themeSel"><option value="">Auto</option><option value="dark">Dark</option><option value="light">Light</option><option value="console">Kobayashi console</option></select></label>
     <span class="console-only amb" title="Ship's ambience: an engine hum made live in your browser. Off until you press it.">
@@ -172,7 +174,7 @@
   </section>
 
   <!-- Log -->
-  <section id="tab-log" class="tab">
+  <section id="tab-log" class="tab" data-i18n-skip>
     <div class="toolbar">
       <button id="btnClearLog">Clear</button>
       <button id="btnSaveLog">Download log</button>
@@ -223,7 +225,7 @@
   </section>
 
   <!-- Assumptions -->
-  <section id="tab-assumptions" class="tab">
+  <section id="tab-assumptions" class="tab" data-i18n-skip>
     <div class="cols">
       <fieldset>
         <legend>Confirmed on a real radio</legend>

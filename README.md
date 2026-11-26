@@ -14,6 +14,7 @@ An unofficial browser app for backing up and programming **Beebest LITO** UHF CB
 - **Cheat sheets:** a printable one-page list of what each slot (C01, C02...) is.
 - **Backup and restore:** full backups (`.lito.json`) and CSV export.
 - **Bulk Programmer:** write one setup to several radios at once.
+- **Languages:** English, Français, Español, Português, 简体中文 and 繁體中文. The app picks your browser's language, and you can change it with the 🌐 picker in the header. Developer tools stay in English.
 - **Developer tools** (turn on under About): a decoded Bluetooth log, a custom-frame sender and protocol status.
 
 The radio holds 60 custom channels. Asking it for a 61st makes it reboot, so the app never writes more than 60.

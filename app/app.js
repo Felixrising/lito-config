@@ -8,8 +8,9 @@ import { toHex, fromHex } from '../lito/frame.js';
 import { PRESETS, buildPreset } from '../lito/presets.js';
 import { cheatSheetHtml } from './cheatsheet.js';
 import * as ambience from './ambience.js';
+import { t, LANGS, getLang, setLang, initI18n } from './i18n.js';
 import { BAND_PLANS, expandRanges, planForCountry } from '../lito/bands.js';
-import { applyConfig, summarize, CLONEABLE_SETTINGS } from '../lito/sync.js';
+import { applyConfig, CLONEABLE_SETTINGS } from '../lito/sync.js';
 import {
   toEditor, diffChannels, rowStatus, validate, buildConfigFile, parseConfigFile, compactUserChannels,
   channelsToCsv, csvToChannels, fromEditor,
@@ -60,8 +61,10 @@ function loadAssumptions() {
 function banner(msg, kind = '') {
   const b = $('#banner');
   if (!msg) { b.className = 'banner hidden'; return; }
+  msg = msg.replace(/([。！？]) /g, '$1'); // no space between Chinese sentences
   b.className = `banner ${kind}`; $('#bannerText').textContent = msg;
-  if (kind === 'ok') setTimeout(() => { if ($('#bannerText').textContent === msg) banner(''); }, 6000);
+  const tok = (banner.tok = (banner.tok || 0) + 1);
+  if (kind === 'ok') setTimeout(() => { if (banner.tok === tok) banner(''); }, 6000);
 }
 $('#bannerClose').onclick = () => banner('');
 function setStatus(text, cls) { const s = $('#connStatus'); s.textContent = text; s.className = `pill ${cls}`; }
@@ -85,7 +88,7 @@ async function busy(label, fn) {
   catch (e) { console.error(e); banner(e.message || String(e), 'error'); }
   finally {
     state.busy = false; refreshButtons();
-    if (connected()) setStatus(`Connected: ${state.radioName}`, 'on'); else setStatus('Not connected', 'off');
+    if (connected()) setStatus(t('Connected: {radio}', { radio: state.radioName }), 'on'); else setStatus('Not connected', 'off');
   }
 }
 
@@ -135,8 +138,8 @@ const funOn = () => document.documentElement.dataset.theme === 'console';
 function setLabel(el, plain, tip = el.dataset.tip ?? el.title) {
   el.dataset.plain = plain; el.dataset.tip = tip;
   const fun = funOn() && FUN_LABELS[plain];
-  el.textContent = fun || plain;
-  el.title = fun ? `${plain.replace(/…$/, '')}${tip ? '. ' + tip : ''}` : tip;
+  el.textContent = fun || t(plain);
+  el.title = fun ? `${t(plain).replace(/…$/, '')}${tip ? '. ' + t(tip) : ''}` : t(tip);
 }
 function applyFunLabels() {
   for (const el of document.querySelectorAll('button')) {
@@ -163,7 +166,7 @@ async function toggleAmbience(on, remember = true) {
   const b = $('#btnAmbience');
   if (remember) try { localStorage.setItem(AMB_KEY, on ? 'on' : 'off'); } catch { /* ignore */ }
   try { if (on) await ambience.start(Number($('#ambVol').value)); else await ambience.stop(); }
-  catch (e) { banner(`Ambience: ${e.message}`, 'error'); on = false; }
+  catch (e) { banner(t('Ambience: {err}', { err: e.message }), 'error'); on = false; }
   b.setAttribute('aria-pressed', String(on));
   setLabel(b, on ? '♪ Ambience on' : '♪ Ambience', on ? 'Press to mute the engines' : 'Play a quiet engine hum, made live in your browser');
 }
@@ -192,7 +195,7 @@ async function connectWith(transport, name) {
   const hs = await client.handshake({ deviceId: storedDeviceId(transport), onWait: () => { setStatus('Confirm on the radio…', 'busy'); banner('The radio is asking for confirmation. Accept the connection on the radio.'); } });
   rememberDeviceId(transport, hs);
   state.client = client;
-  banner(`Connected to ${state.radioName}.`, 'ok');
+  banner(t('Connected to {radio}.', { radio: state.radioName }), 'ok');
   await readDevice();
   await readOnConnect();
 }
@@ -201,26 +204,26 @@ async function connectWith(transport, name) {
 async function readOnConnect() {
   state.lastReadMsg = '';
   try {
-    if (hasPendingEdits() && !confirm(`Connected to ${state.radioName}.\n\nReplace the channels in the editor (you have unsaved edits) with the radio's channels?\n\nOK: load the radio's channels.\nCancel: keep your edits and compare them with this radio.`)) {
+    if (hasPendingEdits() && !confirm(t('Connected to {radio}.', { radio: state.radioName }) + '\n\n' + t("Replace the channels in the editor (you have unsaved edits) with the radio's channels?") + '\n\n' + t("OK: load the radio's channels.") + '\n' + t('Cancel: keep your edits and compare them with this radio.'))) {
       await readChannelsInto(true);
-      state.lastReadMsg = `Kept your edits. The Pending column now compares them with ${state.radioName}.`;
+      state.lastReadMsg = t('Kept your edits. The Pending column now compares them with {radio}.', { radio: state.radioName });
     } else {
       const ch = await readChannelsInto(false);
-      state.lastReadMsg = `Read ${ch.length} channel${ch.length === 1 ? '' : 's'} from ${state.radioName}.`;
+      state.lastReadMsg = t(ch.length === 1 ? 'Read 1 channel from {radio}.' : 'Read {n} channels from {radio}.', { n: ch.length, radio: state.radioName });
     }
-    banner(`Connected. ${state.lastReadMsg}`, 'ok');
-  } catch (e) { banner(`Connected, but reading the channels failed: ${e.message}. Press Read from radio to try again.`, 'error'); }
+    banner(`${t('Connected.')} ${state.lastReadMsg}`, 'ok');
+  } catch (e) { banner(t('Connected, but reading the channels failed: {err}. Press Read from radio to try again.', { err: e.message }), 'error'); }
 }
 
 $('#btnConnect').onclick = () => (connected() ? disconnect() : connectRadio());
 const connectRadio = () => busy('Connecting…', async () => {
-  if (!WebBluetoothTransport.available()) throw new Error('This browser has no Web Bluetooth. Open the app in Chrome or Edge from http://localhost (run start.cmd) or https.');
+  if (!WebBluetoothTransport.available()) throw new Error(t('This browser has no Web Bluetooth. Open the app in Chrome or Edge from http://localhost (run start.cmd) or https.'));
   await connectWith(new WebBluetoothTransport({ acceptAll: $('#acceptAll').checked }), 'LITO');
 });
 $('#btnDemo').onclick = () => busy('Connecting…', async () => {
   const sim = new SimulatedRadio({ requireConfirm: true });
   await connectWith(sim.transport(), 'Simulator');
-  banner(`Connected to a simulated radio (demo mode). Nothing here touches a real radio. ${state.lastReadMsg || ''}`, 'ok');
+  banner(`${t('Connected to a simulated radio (demo mode). Nothing here touches a real radio.')} ${state.lastReadMsg || ''}`, 'ok');
 });
 async function disconnect() {
   const c = state.client; state.client = null; refreshButtons(); setStatus('Not connected', 'off');
@@ -264,7 +267,7 @@ function renderDevice() {
     ['BT audio', d.btAudio ?? '—'],
     ['All channels public', d.isAllPublic != null ? (sw(d.isAllPublic) ? 'yes' : 'no') : '—'],
     ['Current channel', ch && ch.chNo == null ? 'not reported (the radio only sends that channel\'s squelch/VOX settings)' : ch ? `${ch.chNo == null ? '?' : (ch.chType === SEAL_CHTYPE.SEAL_PUBLIC ? 'L' : 'C') + String(ch.chNo + 1).padStart(2, '0')}${ch.chRxFreq ? ' · ' + hzToMHz(ch.chRxFreq) + ' MHz' : ''}${ch.chName ? ' · ' + bytesToName(ch.chName) : ''}` : '—'],
-    ['Region', typeof state.country === 'number' ? `${planForCountry(state.country)?.label ?? 'unknown'} (country code ${state.country})` : (state.country ?? '—')],
+    ['Region', typeof state.country === 'number' ? t('{region} (country code {code})', { region: t(planForCountry(state.country)?.label ?? 'unknown'), code: state.country }) : (state.country ?? '—')],
   ];
   if (d._unknown) info.push(['Unknown fields', jsonable(d._unknown)]);
   $('#devInfo').innerHTML = '';
@@ -306,11 +309,11 @@ $('#btnReadDev').onclick = () => busy('Reading…', async () => { await readDevi
 $('#btnWriteDev').onclick = () => busy('Writing…', async () => {
   const c = deviceChanges();
   if (!Object.keys(c).length) { banner('No settings changed.'); return; }
-  const list = Object.keys(c).map((k) => (k === 'ch' ? 'squelch/VOX/bandwidth/busy lockout' : k)).join(', ');
-  if (!confirm(`Send these settings to the radio?\n\n${list}`)) return;
+  const list = Object.keys(c).map((k) => (k === 'ch' ? t('squelch/VOX/bandwidth/busy lockout') : k)).join(', ');
+  if (!confirm(`${t('Send these settings to the radio?')}\n\n${list}`)) return;
   await state.client.setDeviceParams(c);
   await readDevice();
-  banner(`Saved: ${list}.`, 'ok');
+  banner(t('Saved: {list}.', { list }), 'ok');
 });
 
 // ---------- channels ----------
@@ -458,17 +461,17 @@ function renderSummary() {
   if (!state.rows.length) { $('#chSummary').innerHTML = 'No channels loaded. Connect a radio (its channels load automatically), or press <b>Restore…</b> to load a backup.'; return; }
   const user = live.filter((r) => r.ch.chType !== SEAL_CHTYPE.SEAL_PUBLIC).length;
   const max = 60;
-  let s = `${user} of ${max} custom channels used.${user > max ? ` Too many: the radio holds ${max}.` : ''}`;
+  let s = t('{n} of {max} custom channels used.', { n: user, max }) + (user > max ? ' ' + t('Too many: the radio holds {max}.', { max }) : '');
   if (state.haveSnapshot) {
     const d = diffChannels(state.snapshot, state.rows);
     const n = d.inserts.length + d.modifies.length + d.deletes.length;
-    s += n ? ` Pending: ${d.inserts.length} new, ${d.modifies.length} changed, ${d.deletes.length} to delete.` : ' No unsaved changes.';
-  } else s += ' Not compared with a radio yet.';
-  $('#chSummary').textContent = s;
+    s += ' ' + (n ? t('Pending: {a} new, {m} changed, {d} to delete.', { a: d.inserts.length, m: d.modifies.length, d: d.deletes.length }) : t('No unsaved changes.'));
+  } else s += ' ' + t('Not compared with a radio yet.');
+  $('#chSummary').textContent = s.replace(/([。！？]) /g, '$1');
 }
 
 function setRowsFromRadio(chans) {
-  state.setupSource = `radio ${state.radioName}`;
+  state.setupSource = t('radio {name}', { name: state.radioName });
   state.snapshot = new Map(chans.map((c) => [c.chNo, toEditor(c)]));
   state.haveSnapshot = true;
   state.rows = chans.map((c) => ({ ch: toEditor(c) }));
@@ -483,9 +486,9 @@ async function readChannelsInto(onlySnapshot) {
 }
 
 $('#btnReadCh').onclick = () => busy('Reading channels…', async () => {
-  if (hasPendingEdits() && !confirm('Reading from the radio will replace your unsaved edits. Continue?')) return;
+  if (hasPendingEdits() && !confirm(t('Reading from the radio will replace your unsaved edits. Continue?'))) return;
   const ch = await readChannelsInto(false);
-  banner(`Read ${ch.length} channels.`, 'ok');
+  banner(t('Read {n} channels.', { n: ch.length }), 'ok');
 });
 
 function hasPendingEdits() {
@@ -497,17 +500,17 @@ function hasPendingEdits() {
 
 $('#btnWriteCh').onclick = () => busy('Writing channels…', async () => {
   const errs = validate(state.rows, state.asm);
-  if (errs.length) throw new Error('Fix these first:\n' + errs.map((e) => `  channel ${e.chNo}: ${e.msg}`).join('\n'));
+  if (errs.length) throw new Error(t('Fix these first:') + '\n' + errs.map((e) => `  ${t('channel')} ${e.chNo}: ${e.msg}`).join('\n'));
   if (!state.haveSnapshot) { banner('Reading the radio first so only differences are written…'); await readChannelsInto(true); }
-  if (!state.rows.some((r) => !r.deleted && r.ch.chType !== SEAL_CHTYPE.SEAL_PUBLIC)) throw new Error('That would delete every channel on the radio, so nothing was written. Load a preset or file first.');
+  if (!state.rows.some((r) => !r.deleted && r.ch.chType !== SEAL_CHTYPE.SEAL_PUBLIC)) throw new Error(t('That would delete every channel on the radio, so nothing was written. Load a preset or file first.'));
   if (compactUserChannels(state.rows, state.snapshot)) { renderTable(); banner('Renumbered your channels to close gaps: the radio stores them as a packed list (C01, C02, … with no gaps).'); }
   const d = diffChannels(state.snapshot, state.rows);
   const total = d.inserts.length + d.modifies.length + d.deletes.length;
   if (!total) { banner('Nothing to write: the radio already matches.'); return; }
-  if (!confirm(`Write to the radio?\n\n${d.inserts.length} new, ${d.modifies.length} changed, ${d.deletes.length} deleted.\n\nTip: press Backup… first.`)) return;
+  if (!confirm(`${t('Write to the radio?')}\n\n${t('{a} new, {m} changed, {d} deleted.', { a: d.inserts.length, m: d.modifies.length, d: d.deletes.length })}\n\n${t('Tip: press Backup… first.')}`)) return;
   const fails = []; let done = 0;
   const step = async (label, ch, fn) => {
-    setStatus(`Writing ${++done}/${total}…`, 'busy');
+    setStatus(t('Writing {i}/{n}…', { i: ++done, n: total }), 'busy');
     try { await fn(fromEditor(ch)); } catch (e) { fails.push(`${label} ${ch.chNo}: ${e.message}`); return false; }
     return true;
   };
@@ -517,8 +520,8 @@ $('#btnWriteCh').onclick = () => busy('Writing channels…', async () => {
   for (const ch of [...d.inserts].sort((a, b) => a.chNo - b.chNo)) if (await step('insert', ch, (c) => state.client.insertChannel(c))) state.snapshot.set(ch.chNo, structuredClone(ch));
   state.rows = state.rows.filter((r) => !(r.deleted && !state.snapshot.has(r.ch.chNo)));
   renderTable();
-  if (fails.length) banner(`Wrote ${total - fails.length} of ${total}. Failed:\n${fails.join('\n')}`, 'error');
-  else banner(`Wrote ${total} change(s). Press Read from radio to verify.`, 'ok');
+  if (fails.length) banner(`${t('Wrote {i} of {n}. Failed:', { i: total - fails.length, n: total })}\n${fails.join('\n')}`, 'error');
+  else banner(t('Wrote {n} change(s). Press Read from radio to verify.', { n: total }), 'ok');
 });
 
 $('#btnAddCh').onclick = () => {
@@ -539,7 +542,7 @@ $('#btnDelCh').onclick = () => {
   for (const r of sel) if (!locked(r.ch)) { r.deleted = true; r.sel = false; }
   state.rows = state.rows.filter((r) => !(r.deleted && !state.snapshot.has(r.ch.chNo)));
   renderTable();
-  if (lockedSel.length) banner(`${lockedSel.length} locked public channel(s) were skipped.`);
+  if (lockedSel.length) banner(t('{n} locked public channel(s) were skipped.', { n: lockedSel.length }));
 };
 $('#btnRevert').onclick = () => {
   if (!state.haveSnapshot) { banner('Nothing to undo to: no radio read yet.'); return; }
@@ -579,7 +582,7 @@ function openCheatSheet(opts) {
 $('#btnCheat').onclick = () => {
   const chans = liveChannels().filter((c) => c.chType !== SEAL_CHTYPE.SEAL_PUBLIC);
   if (!chans.length) { banner('No channels to put on a cheat sheet.'); return; }
-  openCheatSheet({ title: state.radioName ? `${state.radioName} channels` : 'Radio channels', subtitle: state.setupSource ? `From ${state.setupSource}` : 'Current channel list', channels: chans });
+  openCheatSheet({ title: state.radioName ? t('{radio} channels', { radio: state.radioName }) : t('Radio channels'), subtitle: state.setupSource ? t('From {src}', { src: state.setupSource }) : t('Current channel list'), channels: chans });
 };
 $('#btnOpen').onclick = () => { $('#fileInput').value = ''; $('#fileInput').click(); };
 $('#fileInput').onchange = async (e) => {
@@ -593,16 +596,16 @@ $('#fileInput').onchange = async (e) => {
       if (f.device) applyDeviceFromFile(f.device);
       if (f.assumptions && JSON.stringify(f.assumptions) !== JSON.stringify(state.asm)) note = ' The file was saved with different protocol assumptions; tones are shown using your current ones.';
     }
-    if (hasPendingEdits() && !confirm('Replace the channels in the editor with this file?')) return;
+    if (hasPendingEdits() && !confirm(t('Replace the channels in the editor with this file?'))) return;
     // keep radio rows that the file doesn't mention? No: the file is the full desired channel list.
     const fileNos = new Set(chans.map((c) => c.chNo));
     state.rows = chans.map((c) => ({ ch: c }));
     for (const [no, c] of state.snapshot) if (!fileNos.has(no)) state.rows.push({ ch: structuredClone(c), deleted: c.chType !== SEAL_CHTYPE.SEAL_PUBLIC });
     state.rows.sort((a, b) => a.ch.chNo - b.ch.chNo);
     renderTable();
-    state.setupSource = `file ${file.name}`;
-    banner(`Loaded ${chans.length} channels from ${file.name}.${state.haveSnapshot ? ' Differences from the radio are highlighted.' : ''}${note}`, 'ok');
-  } catch (err) { banner(`Could not open ${file.name}: ${err.message}`, 'error'); }
+    state.setupSource = t('file {name}', { name: file.name });
+    banner(t('Loaded {n} channels from {file}.', { n: chans.length, file: file.name }) + (state.haveSnapshot ? ' ' + t('Differences from the radio are highlighted.') : '') + note, 'ok');
+  } catch (err) { banner(t('Could not open {file}: {err}', { file: file.name, err: err.message }), 'error'); }
 };
 function applyDeviceFromFile(dev) {
   state.loadedSettings = true;
@@ -747,13 +750,13 @@ function renderPresetList() {
   const list = $('#presetList'); list.innerHTML = '';
   const countries = [...new Set(PRESETS.map((p) => p.country))];
   for (const c of countries) {
-    const h = document.createElement('div'); h.className = 'preset-group'; h.textContent = c; list.appendChild(h);
+    const h = document.createElement('div'); h.className = 'preset-group'; h.textContent = t(c); list.appendChild(h);
     for (const p of PRESETS.filter((x) => x.country === c)) {
       const it = document.createElement('button'); it.className = 'preset-item'; it.setAttribute('role', 'option');
       it.classList.toggle('sel', p.id === presetId); it.setAttribute('aria-selected', String(p.id === presetId));
       it.innerHTML = '<span class="pi-name"></span><span class="pi-meta"></span>';
-      it.querySelector('.pi-name').textContent = p.name;
-      it.querySelector('.pi-meta').textContent = `${buildPreset(p.id).length} channels${p.verified ? '' : ' · unverified'}`;
+      it.querySelector('.pi-name').textContent = t(p.name);
+      it.querySelector('.pi-meta').textContent = t('{n} channels', { n: buildPreset(p.id).length }) + (p.verified ? '' : ' · ' + t('unverified'));
       it.onclick = () => { presetId = p.id; renderPresetList(); showPresetDetail(); };
       list.appendChild(it);
     }
@@ -761,9 +764,9 @@ function renderPresetList() {
 }
 function showPresetDetail() {
   const p = PRESETS.find((x) => x.id === presetId);
-  $('#presetTitle').textContent = `${p.country}: ${p.name}`;
-  $('#presetNotes').textContent = p.notes;
-  $('#presetSource').textContent = `Source: ${p.source}`;
+  $('#presetTitle').textContent = `${t(p.country)}: ${t(p.name)}`;
+  $('#presetNotes').textContent = t(p.notes);
+  $('#presetSource').textContent = t('Source: {src}', { src: p.source });
   const badges = $('#presetBadges'); badges.innerHTML = '';
   const badge = (t, cls, tip) => { const b = document.createElement('span'); b.className = `badge ${cls}`; b.textContent = t; if (tip) b.title = tip; badges.appendChild(b); };
   if (p.slotIsChannel) badge('slot = channel', 'blue', 'Each channel goes in its own numbered slot: C01 holds CH1, C10 holds CH10, and so on');
@@ -773,11 +776,11 @@ function showPresetDetail() {
   $('#presetRptMode').closest('label').classList.toggle('hidden', !('repeaters' in (p.options || {})));
   $('#presetSpare').classList.toggle('hidden', $('#presetRptMode').value !== 'spare');
   const chans = buildPreset(p.id, presetOpts());
-  $('#presetCount').textContent = `${chans.length} channels`;
+  $('#presetCount').textContent = t('{n} channels', { n: chans.length });
   const pv = $('#presetPreview'); pv.innerHTML = '';
   for (const c of chans) {
     const chip = document.createElement('span'); chip.className = 'chip';
-    chip.textContent = c.chName; chip.title = `${hzToMHz(c.chRxFreq)} MHz${c.chTxFreq === 0 ? ', no transmit' : c.chTxFreq !== c.chRxFreq ? `, TX ${hzToMHz(c.chTxFreq)}` : ''}${c.chRxCss ? `, tone ${toneLabel(c.chRxCss)}` : ''}`;
+    chip.textContent = c.chName; chip.title = `${hzToMHz(c.chRxFreq)} MHz${c.chTxFreq === 0 ? ', ' + t('no transmit') : c.chTxFreq !== c.chRxFreq ? `, TX ${hzToMHz(c.chTxFreq)}` : ''}${c.chRxCss ? `, ${t('tone')} ${toneLabel(c.chRxCss)}` : ''}`;
     pv.appendChild(chip);
   }
   const ap = $('#btnPresetAppend');
@@ -812,14 +815,14 @@ function applyPreset(replace) {
   state.rows.sort((a, b) => a.ch.chNo - b.ch.chNo);
   renderTable();
   closePresets();
-  state.setupSource = `preset "${preset.name}"`; renderFleet();
-  banner(`${replace ? 'Overwrote the channel list with' : 'Appended'} ${chans.length} channels from "${preset.name}". Review them, then press Write to radio (or Write Radios in the Bulk Programmer).`, 'ok');
+  state.setupSource = t('preset "{name}"', { name: t(preset.name) }); renderFleet();
+  banner(t(replace ? 'Overwrote the channel list with {n} channels from "{name}".' : 'Appended {n} channels from "{name}".', { n: chans.length, name: t(preset.name) }) + ' ' + t('Review them, then press Write to radio (or Write Radios in the Bulk Programmer).'), 'ok');
 }
 $('#btnPresetReplace').onclick = () => applyPreset(true);
 $('#btnPresetCheat').onclick = () => {
   const p = PRESETS.find((x) => x.id === presetId);
-  const mode = { duplex: 'repeater slots talk through repeaters', spare: `repeater slots are spare copies of CH${$('#presetSpare').value}`, listen: 'repeater slots are listen only' }[$('#presetRptMode').value];
-  openCheatSheet({ title: p.name, subtitle: `${p.country} preset${'repeaters' in (p.options || {}) ? ', ' + mode : ''}`, channels: buildPreset(p.id, presetOpts()) });
+  const mode = { duplex: t('repeater slots talk through repeaters'), spare: t('repeater slots are spare copies of CH{n}', { n: $('#presetSpare').value }), listen: t('repeater slots are listen only') }[$('#presetRptMode').value];
+  openCheatSheet({ title: t(p.name), subtitle: t('{country} preset', { country: t(p.country) }) + ('repeaters' in (p.options || {}) ? ', ' + mode : ''), channels: buildPreset(p.id, presetOpts()) });
 };
 $('#btnPresetAppend').onclick = () => applyPreset(false);
 
@@ -869,7 +872,7 @@ function renderFleet() {
     const br = document.createElement('button'); br.textContent = 'Remove'; br.disabled = busyRow || state.fleetBusy;
     br.onclick = () => fleetRemove(f);
     const bs = document.createElement('button'); bs.textContent = 'Back up'; bs.title = 'Read this radio and download a .lito.json backup';
-    bs.disabled = !f.client || busyRow || state.fleetBusy; bs.onclick = () => fleetBackup(f).catch((e) => banner(`${f.name}: backup failed: ${e.message}`, 'error'));
+    bs.disabled = !f.client || busyRow || state.fleetBusy; bs.onclick = () => fleetBackup(f).catch((e) => banner(`${f.name}: ${t('backup failed')}: ${e.message}`, 'error'));
     act.append(bc, bs, br, tg); tr.appendChild(act); tb.appendChild(tr);
     if (f.open) tb.appendChild(fleetDetail(f));
   }
@@ -878,7 +881,7 @@ function renderFleet() {
   const ready = fleet.filter((f) => f.client && f.include).length;
   const chans = state.rows.filter((r) => !r.deleted && r.ch.chType !== SEAL_CHTYPE.SEAL_PUBLIC).length;
   $('#fleetSummary').textContent = fleet.length
-    ? `${fleet.filter((f) => f.client).length} of ${fleet.length} radio(s) connected, ${ready} ticked and ready. Will write ${chans} channel(s) from the Channels tab.`
+    ? t('{c} of {n} radio(s) connected, {r} ticked and ready. Will write {ch} channel(s) from the Channels tab.', { c: fleet.filter((f) => f.client).length, n: fleet.length, r: ready, ch: chans })
     : 'No radios yet. Press Add radio… for each one.';
   $('#btnFleetApply').disabled = !ready || !chans || state.fleetBusy;
   setLabel($('#btnFleetApply'), 'Write Radios', chans ? 'Write the setup to every ticked radio' : 'Load a setup first (step 1)');
@@ -886,7 +889,7 @@ function renderFleet() {
   const off = fleet.filter((f) => !f.client);
   const quickN = off.filter(canQuick).length;
   const rc = $('#btnFleetConnectAll');
-  rc.classList.toggle('hidden', quickN < 2); rc.textContent = `Reconnect ${quickN}`; rc.disabled = state.fleetBusy;
+  rc.classList.toggle('hidden', quickN < 2); rc.textContent = t('Reconnect {n}', { n: quickN }); rc.disabled = state.fleetBusy;
   $('#fleetConnectHint').textContent = off.some((f) => !canQuick(f))
     ? 'Connect… opens the Bluetooth picker because the browser forgot this radio when the page reloaded. Pick the matching radio. '
       + (knownIds === null ? 'To reconnect without the picker, open chrome://flags (or edge://flags), enable "Use the new permissions backend for Web Bluetooth", and restart the browser.' : '')
@@ -897,7 +900,7 @@ function renderFleetSetup() {
   const live = state.rows.filter((r) => !r.deleted && r.ch.chType !== SEAL_CHTYPE.SEAL_PUBLIC).sort((a, b) => a.ch.chNo - b.ch.chNo);
   if (!live.length) { el.textContent = 'No setup loaded yet. Load a preset or a backup, or open a radio\'s channels below and use "Open in Channels tab".'; return; }
   const names = live.slice(0, 6).map((r) => r.ch.chName || hzToMHz(r.ch.chRxFreq)).join(', ');
-  el.textContent = `${live.length} channel(s)${state.setupSource ? ' from ' + state.setupSource : ''}: ${names}${live.length > 6 ? ', …' : ''}`;
+  el.textContent = `${t('{n} channel(s)', { n: live.length })}${state.setupSource ? ' · ' + state.setupSource : ''}: ${names}${live.length > 6 ? ', …' : ''}`;
 }
 $('#btnFleetPreset').onclick = openPresets;
 $('#btnFleetOpen').onclick = () => $('#btnOpen').click();
@@ -941,14 +944,14 @@ async function fleetRead(f) {
   f.reading = false; renderFleet();
 }
 function fleetToEditor(f) {
-  if (hasPendingEdits() && !confirm('Replace the channels in the editor with this radio\'s channels?')) return;
+  if (hasPendingEdits() && !confirm(t("Replace the channels in the editor with this radio's channels?"))) return;
   state.rows = f.channels.map((c) => ({ ch: structuredClone(c) }));
   if (!isEditorRadio(f)) { state.snapshot = new Map(); state.haveSnapshot = false; }
   else { state.snapshot = new Map(f.channels.map((c) => [c.chNo, structuredClone(c)])); state.haveSnapshot = true; }
   renderTable();
   document.querySelector('.tabs [data-tab=channels]').click();
-  state.setupSource = `radio ${f.name}`;
-  banner(`Loaded ${f.channels.length} channels from ${f.name} into the editor.`, 'ok');
+  state.setupSource = t('radio {name}', { name: f.name });
+  banner(t('Loaded {n} channels from {file}.', { n: f.channels.length, file: f.name }), 'ok');
 }
 
 // Bluetooth device ids the browser still has permission for (null = browser can't tell us).
@@ -968,7 +971,7 @@ async function deviceFor(f) {
   if (d) return (f.device = d);
   // The browser forgot it (page reloaded, no getDevices support): ask the person to pick it again.
   const picked = await WebBluetoothTransport.pick({ acceptAll: $('#acceptAll').checked });
-  if (picked.id !== f.key && fleet.some((x) => x !== f && x.key === picked.id)) throw new Error(`${picked.name || 'That radio'} is already in the list.`);
+  if (picked.id !== f.key && fleet.some((x) => x !== f && x.key === picked.id)) throw new Error(t('{name} is already in the list.', { name: picked.name || 'LITO' }));
   f.key = picked.id; f.name = picked.name || f.name; f.device = picked; saveFleet();
   return picked;
 }
@@ -1034,7 +1037,7 @@ async function fleetBackup(f) {
   try {
     f.channels = (await f.client.readAllChannels()).map(toEditor);
     saveRadioBackup(f, f.channels);
-    fleetSet(f, { result: `backed up ${f.channels.length} channel(s)` });
+    fleetSet(f, { result: t('backed up {n} channel(s)', { n: f.channels.length }) });
   } finally { fleetSet(f, { status: f.client ? 'connected' : 'disconnected' }); }
 }
 $('#btnFleetConnectAll').onclick = async () => {
@@ -1046,14 +1049,14 @@ $('#btnFleetBackup').onclick = async () => {
   state.fleetBusy = true; renderFleet();
   try {
     await Promise.all(targets.map(fleetBackup));
-    if (targets.length > 1) banner(`Saved ${targets.length} backups to your Downloads folder. If the browser asks, allow multiple downloads.`, 'ok');
-  } catch (e) { banner(`Backup failed: ${e.message}`, 'error'); }
+    if (targets.length > 1) banner(t('Saved {n} backups to your Downloads folder. If the browser asks, allow multiple downloads.', { n: targets.length }), 'ok');
+  } catch (e) { banner(t('Backup failed: {err}', { err: e.message }), 'error'); }
   state.fleetBusy = false; renderFleet();
 };
 
 $('#btnFleetApply').onclick = async () => {
   const errs = validate(state.rows, state.asm);
-  if (errs.length) { banner('Fix these in the Channels tab first:\n' + errs.map((e) => `  channel ${e.chNo}: ${e.msg}`).join('\n'), 'error'); return; }
+  if (errs.length) { banner(t('Fix these in the Channels tab first:') + '\n' + errs.map((e) => `  ${t('channel')} ${e.chNo}: ${e.msg}`).join('\n'), 'error'); return; }
   const targets = fleet.filter((f) => f.client && f.include);
   const channels = state.rows.filter((r) => !r.deleted).map((r) => r.ch);
   const settings = {};
@@ -1072,16 +1075,32 @@ $('#btnFleetApply').onclick = async () => {
   await Promise.all(targets.map(async (f) => {
     try {
       const r = await applyConfig(f.client, { channels, settings: useSettings ? settings : undefined },
-        { settings: !!useSettings, removeExtra: $('#fleetRemove').checked, onStep: (t) => fleetSet(f, { status: t }),
+        { settings: !!useSettings, removeExtra: $('#fleetRemove').checked, onStep: (msg) => fleetSet(f, { status: stepText(msg) }),
           onRadioRead: backupFirst ? (radio) => saveRadioBackup(f, radio, 'before-write') : undefined });
       f.channels = null;
-      fleetSet(f, { result: summarize(r), status: r.failures.length ? 'finished with errors' : 'done' });
+      fleetSet(f, { result: resultText(r), status: r.failures.length ? 'finished with errors' : 'done' });
     } catch (e) { fleetSet(f, { status: 'failed', result: e.message }); }
   }));
   state.fleetBusy = false; renderFleet();
   if (targets.some(isEditorRadio)) state.haveSnapshot = false;
-  banner(`Finished writing to ${targets.length} radio(s). See the Result column.`, 'ok');
+  banner(t('Finished writing to {n} radio(s). See the Result column.', { n: targets.length }), 'ok');
 };
+// sync.js reports progress in English; show it in the interface language
+function stepText(msg) {
+  let m = /^Writing channels (\d+)\/(\d+)…$/.exec(msg); if (m) return t('Writing channels {i}/{n}…', { i: m[1], n: m[2] });
+  m = /^Done with (\d+) error\(s\)$/.exec(msg); if (m) return t('Done with {n} error(s)', { n: m[1] });
+  return t(msg);
+}
+function resultText(r) {
+  const parts = [];
+  if (r.inserted) parts.push(t('{n} added', { n: r.inserted }));
+  if (r.modified) parts.push(t('{n} changed', { n: r.modified }));
+  if (r.deleted) parts.push(t('{n} deleted', { n: r.deleted }));
+  if (r.settings.length) parts.push(`${t('settings')}: ${r.settings.join(', ')}`);
+  if (!parts.length) parts.push(t('already matched'));
+  if (r.failures.length) parts.push(`${t('FAILED')}: ${r.failures.join('; ')}`);
+  return parts.join(', ');
+}
 loadFleet();
 
 // ---------- about / developer tools ----------
@@ -1136,5 +1155,15 @@ if (!WebBluetoothTransport.available()) {
     ? 'Open this app through start.cmd (it serves it on http://localhost) so Bluetooth and modules work. The Demo radio also needs that.'
     : 'This browser has no Web Bluetooth. Use Chrome or Edge on Windows. The Demo radio still works.');
 }
+// ---------- language ----------
+for (const [code, name] of Object.entries(LANGS)) { const o = document.createElement('option'); o.value = code; o.textContent = name; $('#langSel').appendChild(o); }
+$('#langSel').value = getLang();
+$('#langSel').onchange = (e) => {
+  setLang(e.target.value);
+  applyFunLabels(); refreshButtons(); renderTable(); renderFleet(); renderDevice();
+  if (state.client) setStatus(t('Connected: {radio}', { radio: state.radioName }), 'on');
+  if (document.querySelector('#presetDialog').open) { renderPresetList(); showPresetDetail(); }
+};
+initI18n();
 window.addEventListener('beforeunload', (e) => { if (hasPendingEdits()) { e.preventDefault(); e.returnValue = ''; } });
 window.lito = { state, codec }; // handy in DevTools for protocol research
