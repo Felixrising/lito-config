@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light dark;
   --bg: #f6f7f9; --panel: #fff; --ink: #1d2330; --muted: #667085; --line: #dde1e7;
   --accent: #0b6bcb; --danger: #c4320a; --ok: #12805c; --warn: #b54708;
   --new: #e8f5ee; --changed: #fff6e0; --deleted: #fdecea;
@@ -144,3 +145,10 @@ td.rname { white-space: nowrap; }
 td.acts button.twisty { margin-left: auto; border: 1px solid var(--line); padding: 2px 10px; }
 td.acts { width: 1%; }
 td select.w-freq { width: 12em; } td select.w-tone { width: 6.5em; }
+
+/* Native dropdowns follow the theme (Windows Chrome draws the open list with these colours). */
+select { font: inherit; color: var(--ink); background-color: var(--panel); border: 1px solid var(--line); border-radius: 4px; }
+select option, select optgroup { background-color: var(--panel); color: var(--ink); }
+select optgroup { color: var(--muted); font-weight: 600; }
+td select { background-color: transparent; border-color: transparent; }
+td select:hover:not(:disabled), td select:focus { border-color: var(--line); background-color: var(--bg); }
