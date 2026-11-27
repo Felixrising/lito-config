@@ -43,24 +43,30 @@ const lookup = (en) => {
 };
 const skipped = (el) => !!el?.closest?.('[data-i18n-skip], script, style');
 
+// We remember the English source and the exact text we last put in each node/attribute. If the current
+// text is something else, the app replaced it, so that new text is the English source.
+const lastText = new WeakMap(); // text node -> text we last wrote (or saw)
+const lastAttr = new WeakMap(); // element -> {attr: value we last wrote (or saw)}
+const render = (en) => (lang === 'en' ? en : (lookup(en) ?? en));
+
 function doText(node) {
   if (skipped(node.parentElement)) return;
-  let en = origText.get(node);
-  // the app replaced the text since we last translated it: the new text is the English source
-  if (en == null || (node.data !== en && node.data !== (lookup(en) ?? en))) { en = node.data; origText.set(node, en); }
-  const out = lang === 'en' ? en : (lookup(en) ?? en);
+  if (!origText.has(node) || node.data !== lastText.get(node)) origText.set(node, node.data);
+  const out = render(origText.get(node));
   if (node.data !== out) node.data = out;
+  lastText.set(node, out);
 }
 function doAttrs(el) {
   if (skipped(el)) return;
-  let o = origAttr.get(el);
+  let o = origAttr.get(el), l = lastAttr.get(el);
   for (const a of ATTRS) {
     if (!el.hasAttribute(a)) continue;
+    if (!o) { o = {}; l = {}; origAttr.set(el, o); lastAttr.set(el, l); }
     const cur = el.getAttribute(a);
-    if (!o) { o = {}; origAttr.set(el, o); }
-    if (o[a] == null || (cur !== o[a] && cur !== (lookup(o[a]) ?? o[a]))) o[a] = cur;
-    const out = lang === 'en' ? o[a] : (lookup(o[a]) ?? o[a]);
+    if (o[a] == null || cur !== l[a]) o[a] = cur;
+    const out = render(o[a]);
     if (cur !== out) el.setAttribute(a, out);
+    l[a] = out;
   }
 }
 function walk(root) {

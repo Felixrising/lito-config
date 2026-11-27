@@ -1160,6 +1160,7 @@ for (const [code, name] of Object.entries(LANGS)) { const o = document.createEle
 $('#langSel').value = getLang();
 $('#langSel').onchange = (e) => {
   setLang(e.target.value);
+  banner(''); // an open message was written in the old language
   applyFunLabels(); refreshButtons(); renderTable(); renderFleet(); renderDevice();
   if (state.client) setStatus(t('Connected: {radio}', { radio: state.radioName }), 'on');
   if (document.querySelector('#presetDialog').open) { renderPresetList(); showPresetDetail(); }
