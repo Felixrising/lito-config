@@ -138,8 +138,9 @@ const funOn = () => document.documentElement.dataset.theme === 'console';
 function setLabel(el, plain, tip = el.dataset.tip ?? el.title) {
   el.dataset.plain = plain; el.dataset.tip = tip;
   const fun = funOn() && FUN_LABELS[plain];
-  el.textContent = fun || t(plain);
-  el.title = fun ? `${t(plain).replace(/…$/, '')}${tip ? '. ' + t(tip) : ''}` : t(tip);
+  el.textContent = fun ? t(fun) : t(plain);
+  const sep = getLang().startsWith('zh') ? '：' : '. ';
+  el.title = fun ? `${t(plain).replace(/…$/, '')}${tip ? sep + t(tip) : ''}` : t(tip);
 }
 function applyFunLabels() {
   for (const el of document.querySelectorAll('button')) {
