@@ -9,6 +9,7 @@ import { PRESETS, buildPreset } from '../lito/presets.js';
 import { cheatSheetHtml } from './cheatsheet.js';
 import * as ambience from './ambience.js';
 import { t, LANGS, getLang, setLang, initI18n } from './i18n.js';
+import { MODES, txAllowed, txMode, txForMode, followRx, COLUMNS, splitClipboard, mapPaste, cellText, rowsToTsv, applyCells } from './grid.js';
 import { BAND_PLANS, expandRanges, planForCountry } from '../lito/bands.js';
 import { applyConfig, CLONEABLE_SETTINGS } from '../lito/sync.js';
 import {
@@ -78,7 +79,7 @@ function refreshButtons() {
   bc.classList.toggle('primary', !c);
   bc.disabled = b && !c;
   $('#btnDemo').disabled = c || b;
-  for (const id of ['#btnReadCh', '#btnWriteCh', '#btnReadDev', '#btnWriteDev', '#btnRawSend', '#btnProbe', '#btnSlotTest', '#btnSlotDelete', '#btnLimitClean', '#btnTxOffTest', '#btnTxOffDelete']) $(id).disabled = !c || b;
+  for (const id of ['#btnReadCh', '#btnWriteCh', '#btnWriteMore', '#btnReadDev', '#btnWriteDev', '#btnRawSend', '#btnProbe', '#btnSlotTest', '#btnSlotDelete', '#btnLimitClean', '#btnTxOffTest', '#btnTxOffDelete']) $(id).disabled = !c || b;
   renderFleet?.();
 }
 async function busy(label, fn) {
@@ -341,7 +342,7 @@ function toneCell(row, field, disabled) {
   if (v != null) addRawOption(sel, v, toneLabel(v) === 'Off' ? 'Off' : `${toneLabel(v)} (raw ${v})`);
   sel.value = v == null ? '0' : String(v);
   sel.onchange = () => { row.ch[field] = Number(sel.value); renderRowStatus(row); };
-  const td = document.createElement('td'); td.appendChild(sel); return td;
+  const td = document.createElement('td'); td.className = field === 'chRxCss' ? 'c-rxTone' : 'c-txTone'; td.appendChild(sel); return td;
 }
 // ---------- frequency dropdowns ----------
 const PLAN_KEY = 'lito.bandplan';
@@ -376,14 +377,36 @@ function freqCell(row, field, disabled) {
   sel.onchange = () => {
     const hz = Number(sel.value), old = row.ch[field];
     row.ch[field] = hz;
-    // Simplex channel: changing RX moves TX with it, if TX may use that frequency.
-    if (field === 'chRxFreq' && row.ch.chTxFreq === old && expandRanges(plan.tx).includes(hz)) {
-      row.ch.chTxFreq = hz; const t = row.tr.querySelector('select.tx-freq'); if (t) t.replaceWith(freqCell(row, 'chTxFreq', disabled).firstChild);
-    }
+    // Changing RX keeps the channel's mode: simplex TX follows, repeater TX stays 750 kHz above, listen only stays off.
+    if (field === 'chRxFreq') { followRx(row.ch, old, plan); refreshTx(row, disabled); } else refreshMode(row, disabled);
     show(); renderRowStatus(row);
   };
-  const td = document.createElement('td'); td.appendChild(sel); return td;
+  const td = document.createElement('td'); td.className = `c-${dir}`; td.appendChild(sel); return td;
 }
+// Mode: simplex / repeater (+750 kHz) / listen only. It's another view of TX, so changing it rewrites TX.
+function modeCell(row, disabled) {
+  const plan = currentPlan(), cur = txMode(row.ch, plan), rx = row.ch.chRxFreq;
+  const sel = document.createElement('select'); sel.className = 'w-mode'; sel.disabled = disabled;
+  for (const [v, label, tip] of MODES) {
+    if ((v === 'repeater' && !plan.repeater) || (v === 'custom' && cur !== 'custom')) continue;
+    const o = document.createElement('option'); o.value = v; o.textContent = label; o.title = tip;
+    if (v === 'custom' || (v !== 'listen' && v !== cur && (rx == null || !txAllowed(plan, txForMode(v, rx, plan))))) {
+      o.disabled = true;
+      if (v !== 'custom') o.title = 'The official app does not allow that TX frequency for this region';
+    }
+    sel.appendChild(o);
+  }
+  sel.value = cur; sel.title = MODES.find(([k]) => k === cur)[2];
+  sel.onchange = () => { row.ch.chTxFreq = txForMode(sel.value, row.ch.chRxFreq, plan); refreshTx(row, disabled); renderRowStatus(row); };
+  const td = document.createElement('td'); td.className = 'c-mode'; td.appendChild(sel); return td;
+}
+function swapCell(row, cls, td) {
+  const old = row.tr?.querySelector(`td.${cls}`); if (!old) return;
+  td.dataset.label = old.dataset.label || ''; const had = old.contains(document.activeElement);
+  old.replaceWith(td); if (had) td.querySelector('select, input')?.focus();
+}
+const refreshMode = (row, disabled) => swapCell(row, 'c-mode', modeCell(row, disabled));
+function refreshTx(row, disabled) { swapCell(row, 'c-tx', freqCell(row, 'chTxFreq', disabled)); refreshMode(row, disabled); }
 const SQ_OPTS = [['1', 'Normal'], ['2', 'Sensitive']];
 const VOX_OPTS = [['0', 'Off'], ['1', 'Low'], ['2', 'Middle'], ['3', 'High']];
 const BAND_OPTS = [['0', 'Wide'], ['1', 'Narrow']];
@@ -410,7 +433,7 @@ function cellInput(row, field, cls, { get, set, disabled, list, type = 'text' })
     if (v === undefined) delete row.ch[field]; else row.ch[field] = v;
     renderRowStatus(row);
   };
-  const td = document.createElement('td'); td.appendChild(inp); return td;
+  const td = document.createElement('td'); td.className = `c-${field}`; td.appendChild(inp); return td;
 }
 const numSet = (s) => (s.trim() === '' ? undefined : Number.isInteger(Number(s)) && Number(s) >= 0 ? Number(s) : null);
 function switchCell(row, field, disabled) {
@@ -430,20 +453,22 @@ function renderRowStatus(row) {
   renderSummary();
 }
 
+const rowOf = new WeakMap(); // <tr> -> row
 function renderTable() {
   const tb = $('#chTable tbody'); tb.innerHTML = '';
   for (const row of state.rows) {
     if (row.deleted && !state.snapshot.has(row.ch.chNo)) continue;
-    const tr = document.createElement('tr'); row.tr = tr;
+    const tr = document.createElement('tr'); row.tr = tr; rowOf.set(tr, row);
     const lk = locked(row.ch) || row.deleted;
     const sel = document.createElement('td'); const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!row.sel;
     cb.onchange = () => { row.sel = cb.checked; }; sel.appendChild(cb); tr.appendChild(sel);
     // Slot is the position on the radio (C01, C02 …). The radio keeps a packed list, so it isn't edited directly.
-    const tdNo = document.createElement('td'); tdNo.className = 'slot';
+    const tdNo = document.createElement('td'); tdNo.className = 'slot c-slot';
     tdNo.textContent = row.ch.chType === SEAL_CHTYPE.SEAL_PUBLIC ? `L${String(row.ch.chNo + 1).padStart(2, '0')}` : `C${String(row.ch.chNo + 1).padStart(2, '0')}`;
     tr.appendChild(tdNo);
     tr.appendChild(cellInput(row, 'chName', 'w-name', { get: (c) => c.chName ?? '', set: (s) => s, disabled: lk }));
     tr.appendChild(freqCell(row, 'chRxFreq', lk));
+    tr.appendChild(modeCell(row, lk));
     tr.appendChild(freqCell(row, 'chTxFreq', lk));
     tr.appendChild(toneCell(row, 'chRxCss', lk));
     tr.appendChild(toneCell(row, 'chTxCss', lk));
@@ -499,40 +524,78 @@ function hasPendingEdits() {
   return d.inserts.length + d.modifies.length + d.deletes.length > 0;
 }
 
-$('#btnWriteCh').onclick = () => busy('Writing channels…', async () => {
-  const errs = validate(state.rows, state.asm);
-  if (errs.length) throw new Error(t('Fix these first:') + '\n' + errs.map((e) => `  ${t('channel')} ${e.chNo}: ${e.msg}`).join('\n'));
-  if (!state.haveSnapshot) { banner('Reading the radio first so only differences are written…'); await readChannelsInto(true); }
-  if (!state.rows.some((r) => !r.deleted && r.ch.chType !== SEAL_CHTYPE.SEAL_PUBLIC)) throw new Error(t('That would delete every channel on the radio, so nothing was written. Load a preset or file first.'));
-  if (compactUserChannels(state.rows, state.snapshot)) { renderTable(); banner('Renumbered your channels to close gaps: the radio stores them as a packed list (C01, C02, … with no gaps).'); }
-  const d = diffChannels(state.snapshot, state.rows);
-  const total = d.inserts.length + d.modifies.length + d.deletes.length;
-  if (!total) { banner('Nothing to write: the radio already matches.'); return; }
-  if (!confirm(`${t('Write to the radio?')}\n\n${t('{a} new, {m} changed, {d} deleted.', { a: d.inserts.length, m: d.modifies.length, d: d.deletes.length })}\n\n${t('Tip: press Backup… first.')}`)) return;
+/** Write channels and/or the settings changed on the Radio settings tab, with one confirmation. */
+const writeToRadio = ({ channels = true, settings = true } = {}) => busy('Writing…', async () => {
+  let d = null, total = 0;
+  if (channels) {
+    const errs = validate(state.rows, state.asm);
+    if (errs.length) throw new Error(t('Fix these first:') + '\n' + errs.map((e) => `  ${t('channel')} ${e.chNo}: ${e.msg}`).join('\n'));
+    if (!state.haveSnapshot) { banner('Reading the radio first so only differences are written…'); await readChannelsInto(true); }
+    if (!state.rows.some((r) => !r.deleted && r.ch.chType !== SEAL_CHTYPE.SEAL_PUBLIC)) throw new Error(t('That would delete every channel on the radio, so nothing was written. Load a preset or file first.'));
+    if (compactUserChannels(state.rows, state.snapshot)) { renderTable(); banner('Renumbered your channels to close gaps: the radio stores them as a packed list (C01, C02, … with no gaps).'); }
+    d = diffChannels(state.snapshot, state.rows);
+    total = d.inserts.length + d.modifies.length + d.deletes.length;
+  }
+  // Settings are compared with what was read from the radio; without a read there's nothing to compare with.
+  if (settings && !state.device && !channels) throw new Error(t('Read the settings first (Radio settings tab), then change them and write.'));
+  const sc = settings && state.device ? deviceChanges() : {};
+  const sList = Object.keys(sc).map((k) => (k === 'ch' ? t('squelch/VOX/bandwidth/busy lockout') : k)).join(', ');
+  if (!total && !sList) { banner(channels ? 'Nothing to write: the radio already matches.' : 'No settings changed.'); return; }
+  const lines = [];
+  if (total) lines.push(t('Channels: {a} new, {m} changed, {d} deleted.', { a: d.inserts.length, m: d.modifies.length, d: d.deletes.length }));
+  if (sList) lines.push(`${t('Settings')}: ${sList}`);
+  if (!confirm(`${t('Write to the radio?')}\n\n${lines.join('\n')}\n\n${t('Tip: press Backup… first.')}`)) return;
   const fails = []; let done = 0;
-  const step = async (label, ch, fn) => {
-    setStatus(t('Writing {i}/{n}…', { i: ++done, n: total }), 'busy');
-    try { await fn(fromEditor(ch)); } catch (e) { fails.push(`${label} ${ch.chNo}: ${e.message}`); return false; }
-    return true;
-  };
-  // the radio packs the list: deleting a slot moves later ones down, so delete from the top slot down
-  for (const ch of [...d.deletes].sort((a, b) => b.chNo - a.chNo)) if (await step('delete', ch, (c) => state.client.deleteChannel(c))) state.snapshot.delete(ch.chNo);
-  for (const ch of d.modifies) if (await step('modify', ch, (c) => state.client.modifyChannel(c))) state.snapshot.set(ch.chNo, structuredClone(ch));
-  for (const ch of [...d.inserts].sort((a, b) => a.chNo - b.chNo)) if (await step('insert', ch, (c) => state.client.insertChannel(c))) state.snapshot.set(ch.chNo, structuredClone(ch));
-  state.rows = state.rows.filter((r) => !(r.deleted && !state.snapshot.has(r.ch.chNo)));
-  renderTable();
-  if (fails.length) banner(`${t('Wrote {i} of {n}. Failed:', { i: total - fails.length, n: total })}\n${fails.join('\n')}`, 'error');
-  else banner(t('Wrote {n} change(s). Press Read from radio to verify.', { n: total }), 'ok');
+  if (total) {
+    const step = async (label, ch, fn) => {
+      setStatus(t('Writing {i}/{n}…', { i: ++done, n: total }), 'busy');
+      try { await fn(fromEditor(ch)); } catch (e) { fails.push(`${label} ${ch.chNo}: ${e.message}`); return false; }
+      return true;
+    };
+    // the radio packs the list: deleting a slot moves later ones down, so delete from the top slot down
+    for (const ch of [...d.deletes].sort((a, b) => b.chNo - a.chNo)) if (await step('delete', ch, (c) => state.client.deleteChannel(c))) state.snapshot.delete(ch.chNo);
+    for (const ch of d.modifies) if (await step('modify', ch, (c) => state.client.modifyChannel(c))) state.snapshot.set(ch.chNo, structuredClone(ch));
+    for (const ch of [...d.inserts].sort((a, b) => a.chNo - b.chNo)) if (await step('insert', ch, (c) => state.client.insertChannel(c))) state.snapshot.set(ch.chNo, structuredClone(ch));
+    state.rows = state.rows.filter((r) => !(r.deleted && !state.snapshot.has(r.ch.chNo)));
+    renderTable();
+  }
+  const chFails = fails.length;
+  if (sList) {
+    try { await state.client.setDeviceParams(sc); await readDevice(); } catch (e) { fails.push(`${t('settings')}: ${e.message}`); }
+  }
+  const okParts = [];
+  if (total) okParts.push(t('Wrote {n} channel change(s).', { n: total - chFails }));
+  if (sList && fails.length === chFails) okParts.push(t('Saved: {list}.', { list: sList }));
+  if (fails.length) banner(`${okParts.join(' ')}\n${t('Failed:')}\n${fails.join('\n')}`.trim(), 'error');
+  else banner(`${okParts.join(' ')}${total ? ' ' + t('Press Read from radio to verify.') : ''}`, 'ok');
 });
+$('#btnWriteCh').onclick = () => writeToRadio();
+const writeMenu = $('#writeMenu');
+function showWriteMenu(open) { writeMenu.hidden = !open; $('#btnWriteMore').setAttribute('aria-expanded', String(open)); if (open) writeMenu.querySelector('button')?.focus(); }
+$('#btnWriteMore').onclick = (e) => { e.stopPropagation(); showWriteMenu(writeMenu.hidden); };
+writeMenu.onclick = (e) => {
+  const b = e.target.closest('button[data-write]'); if (!b) return;
+  showWriteMenu(false);
+  writeToRadio({ channels: b.dataset.write !== 'settings', settings: b.dataset.write !== 'channels' });
+};
+writeMenu.onkeydown = (e) => {
+  const items = [...writeMenu.querySelectorAll('button')], i = items.indexOf(document.activeElement);
+  if (e.key === 'Escape') { showWriteMenu(false); $('#btnWriteMore').focus(); }
+  else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus(); }
+};
+document.addEventListener('click', (e) => { if (!writeMenu.hidden && !e.target.closest('.split')) showWriteMenu(false); });
 
-$('#btnAddCh').onclick = () => {
+function newChannel() {
   const used = new Set(state.rows.map((r) => r.ch.chNo));
   let no = Math.max(0, ...used) + 1; while (used.has(no)) no++;
   const tmpl = state.rows.find((r) => r.ch.chType !== SEAL_CHTYPE.SEAL_PUBLIC)?.ch || state.rows[0]?.ch || {};
   const ch = { chNo: no, chType: SEAL_CHTYPE.SEAL_USERDEF, chName: `CH${no}`, chRxFreq: tmpl.chRxFreq ?? 476425000, chTxFreq: tmpl.chRxFreq ?? 476425000,
     chRxCss: 0, chTxCss: 0 };
   for (const k of ['chSq', 'chVox', 'chTxPower', 'chPowerLevel', 'chBand', 'chElim', 'chPolite']) if (tmpl[k] !== undefined) ch[k] = tmpl[k];
-  state.rows.push({ ch });
+  const row = { ch }; state.rows.push(row); return row;
+}
+$('#btnAddCh').onclick = () => {
+  newChannel();
   renderTable();
   $('#chTable tbody tr:last-child input.w-name')?.focus();
 };
@@ -551,6 +614,99 @@ $('#btnRevert').onclick = () => {
   renderTable();
 };
 $('#selAll').onchange = (e) => { for (const r of state.rows) if (!locked(r.ch)) r.sel = e.target.checked; renderTable(); };
+
+// ---------- spreadsheet-style keys, copy and paste ----------
+const COL_CLASS = { 'c-slot': 'slot', 'c-chName': 'name', 'c-rx': 'rx', 'c-mode': 'mode', 'c-tx': 'tx', 'c-rxTone': 'rxTone', 'c-txTone': 'txTone' };
+const colKey = (td) => (td ? Object.entries(COL_CLASS).find(([c]) => td.classList.contains(c))?.[1] ?? null : null);
+const ctrlIn = (td) => td?.querySelector('input, select');
+const isText = (el) => el?.tagName === 'INPUT' && el.type === 'text';
+function focusCell(td) {
+  const el = ctrlIn(td); if (!el || el.disabled) return false;
+  el.focus(); if (isText(el)) el.select();
+  return true;
+}
+/** Move focus dr rows / dc columns from a cell, skipping cells with nothing to edit (slot, locked rows). */
+function moveCell(td, dr, dc, toEnd = false) {
+  const rows = [...td.parentElement.parentElement.children];
+  let r = rows.indexOf(td.parentElement), c = [...td.parentElement.children].indexOf(td);
+  if (toEnd) r = dr < 0 ? -1 : rows.length, dr = -dr; // Ctrl+Home/End: search inwards from the edge
+  for (;;) {
+    r += dr; c += dc;
+    const cell = rows[r]?.children[c];
+    if (!cell) return false;
+    if (focusCell(cell)) { cell.scrollIntoView({ block: 'nearest', inline: 'nearest' }); return true; }
+  }
+}
+const chBody = $('#chTable tbody');
+chBody.addEventListener('focusin', (e) => { if (isText(e.target)) e.target.dataset.orig = e.target.value; });
+chBody.addEventListener('keydown', (e) => {
+  const el = e.target, td = el.closest?.('td');
+  if (!td || e.altKey || e.metaKey || e.isComposing) return;
+  const text = isText(el), k = e.key;
+  const atStart = !text || (el.selectionStart === 0 && el.selectionEnd === 0);
+  const atEnd = !text || (el.selectionStart === el.value.length && el.selectionEnd === el.value.length);
+  let move = null;
+  if (k === 'ArrowUp' || k === 'ArrowDown') move = [k === 'ArrowUp' ? -1 : 1, 0, e.ctrlKey];
+  else if (k === 'ArrowLeft' && atStart && !e.shiftKey) move = [0, -1];
+  else if (k === 'ArrowRight' && atEnd && !e.shiftKey) move = [0, 1];
+  else if ((k === 'Home' || k === 'End') && e.ctrlKey) move = [k === 'Home' ? -1 : 1, 0, true];
+  else if (k === 'Enter' && text) move = [e.shiftKey ? -1 : 1, 0];
+  else if ((k === 'Enter' || k === 'F2') && el.tagName === 'SELECT') { e.preventDefault(); try { el.showPicker(); } catch { /* older browsers */ } return; }
+  else if (k === 'F2' && text) { e.preventDefault(); el.setSelectionRange(el.value.length, el.value.length); return; }
+  else if (k === 'Escape' && text && el.dataset.orig != null) { e.preventDefault(); el.value = el.dataset.orig; el.select(); return; }
+  if (!move) return;
+  e.preventDefault();
+  moveCell(td, move[0], move[1], move[2]);
+});
+
+const gridOpts = () => ({ plan: currentPlan(), asm: state.asm, tr: t });
+const inGrid = (el) => !!el?.closest?.('#chTable');
+document.addEventListener('copy', (e) => {
+  const el = document.activeElement;
+  if (!inGrid(el) || (isText(el) && el.selectionStart !== el.selectionEnd)) return; // copying selected text: let the browser do it
+  const ticked = state.rows.filter((r) => r.sel && r.tr?.isConnected);
+  const td = el.closest('td'), row = rowOf.get(el.closest('tr')), key = colKey(td);
+  let text;
+  if (ticked.length) text = rowsToTsv(ticked.map((r) => r.ch), gridOpts());
+  else if (row && key && key !== 'slot') text = cellText(row.ch, key, gridOpts());
+  else if (row) text = rowsToTsv([row.ch], gridOpts());
+  else return;
+  e.preventDefault(); e.clipboardData.setData('text/plain', text);
+  banner(ticked.length ? t('Copied {n} row(s). Paste them into Excel, or into another row here.', { n: ticked.length }) : t('Copied.'));
+});
+document.addEventListener('paste', (e) => {
+  const el = document.activeElement, tr = el?.closest?.('#chTable tbody tr');
+  if (!tr) return;
+  const lines = splitClipboard(e.clipboardData.getData('text/plain'));
+  if (!lines.length) return;
+  const single = lines.length === 1 && lines[0].length === 1;
+  if (single && isText(el)) return; // one value into a text box: normal paste
+  e.preventDefault();
+  const td = el.closest('td'), start = colKey(td);
+  const { keys, rows } = single ? { keys: [start], rows: lines } : mapPaste(lines, start && start !== 'slot' ? start : 'name', t);
+  if (!keys.some(Boolean) || !rows.length) return;
+  const visible = [...chBody.children].map((x) => rowOf.get(x)).filter(Boolean);
+  let i = visible.indexOf(rowOf.get(tr)), changed = 0, added = 0, skipped = 0; const bad = [];
+  for (const cells of rows) {
+    while (visible[i] && (locked(visible[i].ch) || visible[i].deleted)) { i++; skipped++; }
+    let row = visible[i++];
+    if (!row) {
+      if (state.rows.filter((r) => !r.deleted && r.ch.chType !== SEAL_CHTYPE.SEAL_PUBLIC).length >= 60) { skipped++; continue; }
+      row = newChannel(); added++;
+    }
+    const obj = {}; keys.forEach((k, j) => { if (k) obj[k] = cells[j]; });
+    const b = applyCells(row.ch, obj, gridOpts());
+    if (b.length) bad.push(`${cellText(row.ch, 'slot', gridOpts())}: ${b.map((k) => t(COLUMNS.find((c) => c.key === k).head)).join(', ')}`);
+    changed++;
+  }
+  const at = [...tr.children].indexOf(td);
+  const firstRow = [...chBody.children].indexOf(tr);
+  renderTable();
+  focusCell(chBody.children[firstRow]?.children[at]);
+  let msg = single ? '' : t('Pasted {n} row(s).', { n: changed }) + (added ? ' ' + t('{n} new.', { n: added }) : '') + (skipped ? ' ' + t('{n} skipped (locked, or the radio is full).', { n: skipped }) : '');
+  if (bad.length) msg = `${msg} ${t("Couldn't read:")} ${bad.join('; ')}`.trim();
+  if (msg) banner(msg, bad.length ? 'error' : 'ok');
+});
 
 // ---------- files ----------
 function stamp() { return new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-'); }
@@ -884,8 +1040,9 @@ function renderFleet() {
   $('#fleetSummary').textContent = fleet.length
     ? t('{c} of {n} radio(s) connected, {r} ticked and ready. Will write {ch} channel(s) from the Channels tab.', { c: fleet.filter((f) => f.client).length, n: fleet.length, r: ready, ch: chans })
     : 'No radios yet. Press Add radio… for each one.';
-  $('#btnFleetApply').disabled = !ready || !chans || state.fleetBusy;
-  setLabel($('#btnFleetApply'), 'Write Radios', chans ? 'Write the setup to every ticked radio' : 'Load a setup first (step 1)');
+  const setOnly = $('#fleetWhat').value === 'settings';
+  $('#btnFleetApply').disabled = !ready || (!chans && !setOnly) || state.fleetBusy;
+  setLabel($('#btnFleetApply'), 'Write Radios', setOnly ? 'Write the settings to every ticked radio' : chans ? 'Write the setup to every ticked radio' : 'Load a setup first (step 1)');
   $('#btnFleetBackup').disabled = !ready || state.fleetBusy;
   const off = fleet.filter((f) => !f.client);
   const quickN = off.filter(canQuick).length;
@@ -1055,35 +1212,49 @@ $('#btnFleetBackup').onclick = async () => {
   state.fleetBusy = false; renderFleet();
 };
 
+const FLEET_WHAT_KEY = 'lito.fleetWhat';
+$('#fleetWhat').value = localStorage.getItem(FLEET_WHAT_KEY) || 'both';
+if (!$('#fleetWhat').value) $('#fleetWhat').value = 'both';
+$('#fleetWhat').onchange = (e) => { localStorage.setItem(FLEET_WHAT_KEY, e.target.value); renderFleet(); };
+const fleetWhat = () => $('#fleetWhat').value || 'both';
 $('#btnFleetApply').onclick = async () => {
-  const errs = validate(state.rows, state.asm);
+  const what = fleetWhat(), doCh = what !== 'settings', doSet = what !== 'channels';
+  const errs = doCh ? validate(state.rows, state.asm) : [];
   if (errs.length) { banner(t('Fix these in the Channels tab first:') + '\n' + errs.map((e) => `  ${t('channel')} ${e.chNo}: ${e.msg}`).join('\n'), 'error'); return; }
   const targets = fleet.filter((f) => f.client && f.include);
   const channels = state.rows.filter((r) => !r.deleted).map((r) => r.ch);
   const settings = {};
-  if ($('#fleetSettings').checked) {
+  if (doSet) {
     settings.voiceType = Number($('#f_voiceType').value);
     settings.voiceAlert = $('#f_voiceAlert').checked ? SEAL_SWITCH.SEAL_ON : SEAL_SWITCH.SEAL_OFF;
     settings.shareLoc = $('#f_shareLoc').checked ? SEAL_SWITCH.SEAL_ON : SEAL_SWITCH.SEAL_OFF;
     if ($('#f_pwsaveMode').value !== '') settings.pwsaveMode = Number($('#f_pwsaveMode').value);
   }
-  const useSettings = $('#fleetSettings').checked && (state.device || state.loadedSettings);
+  // Settings come from the Radio settings tab, so they need a radio read or a loaded backup behind them.
+  const useSettings = doSet && !!(state.device || state.loadedSettings);
+  if (!doCh && !useSettings) { banner(t('There are no settings to copy yet. Connect a radio or load a backup, then check the Radio settings tab.'), 'error'); return; }
   const userCh = channels.filter((c) => c.chType !== SEAL_CHTYPE.SEAL_PUBLIC).length;
-  if (!userCh) { banner('The setup to write is empty. Load a preset or a file first (step 1).', 'error'); return; }
-  if (!confirm(`Write ${userCh} channel(s)${useSettings ? ' and settings (' + CLONEABLE_SETTINGS.join(', ') + ')' : ''} to ${targets.length} radio(s)?${$('#fleetBackupFirst').checked ? '\n\nA backup of each radio is downloaded first.' : ''}${$('#fleetRemove').checked ? '\n\nChannels on those radios that are not in this setup will be DELETED.' : ''}`)) return;
+  if (doCh && !userCh) { banner('The setup to write is empty. Load a preset or a file first (step 1).', 'error'); return; }
+  const parts = [];
+  if (doCh) parts.push(t('{n} channel(s)', { n: userCh }));
+  if (useSettings) parts.push(t('settings ({list})', { list: CLONEABLE_SETTINGS.join(', ') }));
+  let msg = t('Write {what} to {n} radio(s)?', { what: parts.length > 1 ? t('{a} and {b}', { a: parts[0], b: parts[1] }) : parts[0], n: targets.length });
+  if (doCh && $('#fleetBackupFirst').checked) msg += '\n\n' + t('A backup of each radio is downloaded first.');
+  if (doCh && $('#fleetRemove').checked) msg += '\n\n' + t('Channels on those radios that are not in this setup will be DELETED.');
+  if (!confirm(msg)) return;
   const backupFirst = $('#fleetBackupFirst').checked;
   state.fleetBusy = true; renderFleet();
   await Promise.all(targets.map(async (f) => {
     try {
       const r = await applyConfig(f.client, { channels, settings: useSettings ? settings : undefined },
-        { settings: !!useSettings, removeExtra: $('#fleetRemove').checked, onStep: (msg) => fleetSet(f, { status: stepText(msg) }),
+        { channels: doCh, settings: useSettings, removeExtra: $('#fleetRemove').checked, onStep: (m) => fleetSet(f, { status: stepText(m) }),
           onRadioRead: backupFirst ? (radio) => saveRadioBackup(f, radio, 'before-write') : undefined });
-      f.channels = null;
+      if (doCh) f.channels = null;
       fleetSet(f, { result: resultText(r), status: r.failures.length ? 'finished with errors' : 'done' });
     } catch (e) { fleetSet(f, { status: 'failed', result: e.message }); }
   }));
   state.fleetBusy = false; renderFleet();
-  if (targets.some(isEditorRadio)) state.haveSnapshot = false;
+  if (doCh && targets.some(isEditorRadio)) state.haveSnapshot = false;
   banner(t('Finished writing to {n} radio(s). See the Result column.', { n: targets.length }), 'ok');
 };
 // sync.js reports progress in English; show it in the interface language

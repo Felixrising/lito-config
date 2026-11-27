@@ -98,3 +98,14 @@ test('the client refuses to insert a 61st custom channel (the radio reboots inst
   await c.open(); await c.handshake();
   await assert.rejects(c.insertChannel({ chNo: 60, chType: 2, chName: 'X', chRxFreq: 476425000, chTxFreq: 476425000 }), /60-channel limit/);
 });
+
+test('settings-only write leaves channels alone, even with an empty setup', async () => {
+  const sim = new SimulatedRadio({ latencyMs: 1 });
+  const c = new LitoClient(sim.transport(), { timeoutMs: 1000 }); await c.open(); await c.handshake();
+  const before = (await c.readAllChannels()).map(toEditor);
+  const r = await applyConfig(c, { channels: [], settings: { voiceType: 1, voiceAlert: 1 } }, { channels: false });
+  assert.deepEqual(r.failures, []);
+  assert.equal(r.inserted + r.modified + r.deleted, 0);
+  assert.ok(r.settings.length > 0);
+  assert.deepEqual((await c.readAllChannels()).map(toEditor), before);
+});

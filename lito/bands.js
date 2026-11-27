@@ -27,8 +27,8 @@ function frsName(hz) {
 const pmrName = (hz) => `PMR${Math.round((hz - 446006250) / 12500) + 1}`;
 
 export const BAND_PLANS = [
-  { id: 'au', label: 'Australia', codes: [36], rx: AU_RX, tx: AU_TX, name: cbName },
-  { id: 'nz', label: 'New Zealand', codes: [554], rx: AU_RX, tx: AU_TX, name: cbName },
+  { id: 'au', label: 'Australia', codes: [36], rx: AU_RX, tx: AU_TX, name: cbName, repeater: 750000 },
+  { id: 'nz', label: 'New Zealand', codes: [554], rx: AU_RX, tx: AU_TX, name: cbName, repeater: 750000 },
   { id: 'us', label: 'United States / Canada', codes: [840, 124], rx: US, tx: US, name: frsName },
   { id: 'eu', label: 'Europe / UK', codes: EU_CODES, rx: PMR, tx: PMR, name: pmrName },
   { id: 'sg', label: 'Singapore', codes: [65], rx: PMR_SG, tx: PMR_SG, name: pmrName },

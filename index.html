@@ -61,7 +61,14 @@
     <div class="toolbar">
       <div class="group">
         <button id="btnReadCh" class="primary" disabled title="Read every custom channel from the connected radio into the editor">Read from radio</button>
-        <button id="btnWriteCh" class="danger" disabled title="Send your edits to the radio. Only the differences are written (see the Pending column).">Write to radio</button>
+        <span class="split">
+          <button id="btnWriteCh" class="danger" disabled title="Send your edits to the radio: the channel differences (see the Pending column) and any settings you changed on the Radio settings tab">Write to radio</button><button id="btnWriteMore" class="danger caret" disabled aria-haspopup="menu" aria-expanded="false" title="Choose what to write">▾</button>
+          <div id="writeMenu" class="menu" role="menu" hidden>
+            <button data-write="both" role="menuitem" title="Channel differences plus any settings you changed">Channels and settings</button>
+            <button data-write="channels" role="menuitem" title="Only the channel differences. Settings stay as they are on the radio.">Channels only</button>
+            <button data-write="settings" role="menuitem" title="Only the settings you changed on the Radio settings tab. Channels stay as they are.">Settings only</button>
+          </div>
+        </span>
       </div>
       <div class="group">
         <button id="btnAddCh" title="Add an empty channel at the end of the list">Add channel</button>
@@ -88,6 +95,7 @@
           <th><input type="checkbox" id="selAll" title="Select or clear all channels"></th>
           <th title="The slot this channel shows as on the radio (C01, C02 …). The radio keeps them in order with no gaps.">Slot</th><th title="Up to 18 characters: letters and numbers only. The radio screen shows the slot (C01), not the name; the name shows in the app.">Name</th>
           <th title="Receive frequency. The list holds the frequencies the official app allows for the selected region.">RX MHz</th>
+          <th title="Simplex transmits on the RX frequency. Repeater transmits 750 kHz higher, on the repeater input. Listen only never transmits.">Mode</th>
           <th title="Transmit frequency. Usually the same as RX; repeater channels transmit 750 kHz higher.">TX MHz</th>
           <th title="Receive tone (CTCSS or DCS). With a tone set, the speaker only opens for radios sending the same tone. Off hears everyone.">RX tone</th>
           <th title="Tone sent when you transmit, so radios using the same RX tone hear you">TX tone</th>
@@ -153,7 +161,7 @@
         <button id="btnFleetBackup" disabled title="Reads each ticked, connected radio and downloads a .lito.json backup of it">Back up ticked radios</button>
         <button id="btnFleetApply" class="danger" disabled title="Write the setup to every ticked, connected radio at the same time">Write Radios</button>
         <label class="small" title="Download a .lito.json backup of each radio just before writing to it"><input type="checkbox" id="fleetBackupFirst"> back up each radio first</label>
-        <label class="small" title="Also copy voice prompts, voice alert, location sharing and power save. Device names are never copied."><input type="checkbox" id="fleetSettings" checked> also copy settings (voice, alerts, location, power save; never names)</label>
+        <label class="small field" title="What Write Radios sends. Settings are voice prompts, voice alert, location sharing and power save, from the Radio settings tab. Device names are never copied.">Write <select id="fleetWhat"><option value="both">Channels and settings</option><option value="channels">Channels only</option><option value="settings">Settings only</option></select></label>
         <label class="small" title="Delete channels on the radios that aren't in the setup. Untick to keep them after the setup's channels."><input type="checkbox" id="fleetRemove" checked> remove channels that aren't in the setup</label>
       </div>
       <div id="fleetSummary" class="summary"></div>

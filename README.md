@@ -27,10 +27,13 @@ All screenshots use the built-in demo radio, so you can follow along without a r
 
 ![Channels tab](docs/screenshots/channels.png)
 
-- **Read from radio** loads the radio's channels into the table. **Write to radio** sends only what changed; the **Pending** column shows what will be added, changed or deleted, and rows are coloured to match.
+- **Read from radio** loads the radio's channels into the table. **Write to radio** sends only what changed, plus any settings you changed on the Radio settings tab; the **Pending** column shows what will be added, changed or deleted, and rows are coloured to match. The **▾** next to it writes *Channels only* or *Settings only*.
 - **Slot** is what the radio's screen shows (C01, C02...). The radio doesn't display channel names, which is why the cheat sheet exists.
 - **RX MHz** and **TX MHz** are fixed lists of the frequencies the radio accepts in your **Region** (picked automatically from the radio). Each entry shows its channel number, for example `476.42500 CH1`. TX also offers *No transmit (listen only)*.
+- **Mode** is *Simplex* (TX = RX), *Repeater (+750 kHz)* or *Listen only*. In Australia, repeaters repeat on CH1-8 and CH41-48 and listen 750 kHz higher (CH31-38, CH71-78), so picking RX CH3 sets TX to CH33 for you. Changing RX keeps the mode.
 - **RX tone** and **TX tone** list the CTCSS tones and DCS codes. A radio only hears others using the same tone, so give everyone in a group the same setting.
+- **Keyboard:** arrow keys move between cells like a spreadsheet, Enter moves down from a name, and Enter or F2 opens a dropdown. Escape undoes a name you're typing.
+- **Copy and paste with Excel:** tick rows and press Ctrl+C to copy them with headings. Paste rows from Excel onto a row to fill from there (new rows are added at the end). Columns are matched by heading (Name, RX MHz, TX tone…), and frequencies can be MHz or a channel number such as `CH5`. With nothing ticked, Ctrl+C and Ctrl+V work on the one cell.
 - **Undo all edits** puts the table back to what was last read. **Backup…** saves everything to a file, and **Restore…** loads it back into the editor. Nothing is sent to the radio until you press Write.
 
 ### Presets
@@ -68,7 +71,7 @@ Turn it on under **About**. It writes one setup to several radios.
 1. **Setup to write:** the channel list from the Channels tab. Load it from **Presets…** or **Load backup…**, or edit it on the Channels tab.
 2. **Radios:** press **Add radio…** for each radio. The button colour shows the connection: green is connected, amber is busy. Each row has **Back up** and an expand arrow to read and view that radio's channels.
 
-Then tick the radios and press **Write Radios**. Tick *back up each radio first* to save a backup of each radio before writing. The app refuses to write an empty setup.
+Then tick the radios, choose what to **Write** (channels and settings, channels only, or settings only) and press **Write Radios**. Settings are voice prompts, voice alert, location sharing and power save from the Radio settings tab; device names are never copied. Tick *back up each radio first* to save a backup of each radio before writing. The app refuses to write an empty setup.
 
 ### Kobayashi console theme
 

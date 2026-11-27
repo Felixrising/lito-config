@@ -186,3 +186,10 @@
   [data-theme=console] fieldset { border-left-width: 16px; border-radius: 22px 0 0 0; }
   [data-theme=console] #chTable tr, [data-theme=console] #fleetTable tr { border: none; border-left: 10px solid var(--c-lilac); border-radius: 18px 0 0 18px; background: #08060c; }
 }
+
+/* split Write button and its menu */
+[data-theme=console] .toolbar .group > .split > button { border-radius: 4px; margin-left: 4px; }
+[data-theme=console] .toolbar .group > .split:last-child > button.caret { border-radius: 0 99px 99px 0; }
+[data-theme=console] .menu { background: #000; border: 2px solid var(--c-salmon); border-radius: 0 16px 16px 16px; }
+[data-theme=console] .menu button { background: transparent; color: var(--c-salmon); border-radius: 99px; }
+[data-theme=console] .menu button:hover, [data-theme=console] .menu button:focus-visible { background: var(--c-salmon); color: #000; }
